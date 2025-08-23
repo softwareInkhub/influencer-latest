@@ -82,11 +82,23 @@ export async function POST(request: NextRequest) {
       name: error instanceof Error ? error.name : 'Unknown'
     });
     
+    // Provide more specific error messages
+    let errorMessage = "Failed to create influencer";
+    if (error instanceof Error) {
+      if (error.message.includes('schema')) {
+        errorMessage = `Validation error: ${error.message}`;
+      } else if (error.message.includes('BRMH') || error.message.includes('fetch')) {
+        errorMessage = `Backend connection error: ${error.message}`;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     console.log('=== INFLUENCER CREATE RESPONSE (ERROR) ===');
     console.log('Status: 500 Internal Server Error');
-    console.log('Response Body:', JSON.stringify({ error: "Failed to create influencer" }, null, 2));
+    console.log('Response Body:', JSON.stringify({ error: errorMessage }, null, 2));
     console.log('Timestamp:', new Date().toISOString());
     
-    return NextResponse.json({ error: "Failed to create influencer" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

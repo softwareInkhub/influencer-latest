@@ -131,29 +131,29 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                 <div className="flex items-start space-x-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
                     <span className="text-xl font-bold text-white">
-                      HK
+                      {getInitials(influencer.name || 'Unknown')}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900">Himanshu Kumar</h3>
+                    <h3 className="text-lg font-bold text-gray-900">{influencer.name || 'Unknown Influencer'}</h3>
                     <Badge className="mt-2 bg-gray-100 text-gray-800 border-gray-200">
-                      OrderCreated
+                      {influencer.status || 'OrderCreated'}
                     </Badge>
                   </div>
                 </div>
                 <div className="mt-3 space-y-2">
                   <div className="flex items-center space-x-3">
                     <Mail className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">himashu@gmail.com</span>
+                    <span className="text-sm text-gray-700">{influencer.email || 'No email'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">+918002499033</span>
+                    <span className="text-sm text-gray-700">{influencer.phone || 'No phone'}</span>
                   </div>
                   <div className="flex items-start space-x-3">
                     <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                     <span className="text-sm text-gray-700">
-                      piska more
+                      {influencer.address || 'No address'}
                     </span>
                   </div>
                 </div>
