@@ -67,7 +67,7 @@ export const influencers = pgTable("influencers", {
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   influencerId: varchar("influencer_id").references(() => influencers.id).notNull(),
-  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  companyId: varchar("company_id").references(() => companies.id),
   shopifyOrderId: text("shopify_order_id").notNull(),
   status: text("status").notNull().default("Created"),
   trackingInfo: json("tracking_info").$type<{

@@ -338,6 +338,26 @@ export default function InfluencersTab() {
                       </Button>
                     </div>
                   )}
+
+                  {/* Create Order Button for OrderCreated Influencers (can create additional orders) */}
+                  {influencer.status === "OrderCreated" && (
+                    <div className="flex mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50 h-7 px-3 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCreateOrder(influencer);
+                        }}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <ShoppingCart className="w-3 h-3" />
+                          <span>Create Order</span>
+                        </div>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

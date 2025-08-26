@@ -41,15 +41,15 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      age: 18,
-      gender: "Female",
-      phone: "+1 (555) 123-4567",
+      age: undefined,
+      gender: "",
+      phone: "",
       email: "",
       address: "",
-      instagramHandle: "@username",
-      instagramFollowers: "50000",
-      youtubeChannel: "Channel name",
-      youtubeSubscribers: "25000",
+      instagramHandle: "",
+      instagramFollowers: "",
+      youtubeChannel: "",
+      youtubeSubscribers: "",
     },
   });
 
@@ -137,7 +137,7 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
 
               <div>
                 <Label htmlFor="gender" className="text-sm font-medium text-gray-700 mb-1 block">Gender</Label>
-                <Select onValueChange={(value) => form.setValue("gender", value)} defaultValue="Female">
+                <Select onValueChange={(value) => form.setValue("gender", value)}>
                   <SelectTrigger className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
@@ -203,7 +203,7 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
                 <Input
                   id="instagramHandle"
                   {...form.register("instagramHandle")}
-                  placeholder="@username"
+                  placeholder="Enter Instagram handle"
                   className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -213,7 +213,7 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
                   id="instagramFollowers"
                   type="number"
                   {...form.register("instagramFollowers")}
-                  placeholder="50000"
+                  placeholder="Enter follower count"
                   className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -225,7 +225,7 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
                 <Input
                   id="youtubeChannel"
                   {...form.register("youtubeChannel")}
-                  placeholder="Channel name"
+                  placeholder="Enter YouTube channel name"
                   className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -235,7 +235,7 @@ export default function AddInfluencerDialog({ open, onOpenChange }: AddInfluence
                   id="youtubeSubscribers"
                   type="number"
                   {...form.register("youtubeSubscribers")}
-                  placeholder="25000"
+                  placeholder="Enter subscriber count"
                   className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>

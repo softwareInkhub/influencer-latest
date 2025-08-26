@@ -102,8 +102,10 @@ export class BRMHInfluencerAPI {
 
     // Map the role to proper status
     let status = 'PendingApproval';
-    if (tableData.role === 'OrderCreat') {
+    if (tableData.role === 'OrderCreated') {
       status = 'OrderCreated';
+    } else if (tableData.role === 'OrderCreat') {
+      status = 'OrderCreated'; // Handle legacy typo
     } else if (tableData.role === 'Approved') {
       status = 'Approved';
     } else if (tableData.role === 'Active') {

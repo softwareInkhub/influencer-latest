@@ -365,7 +365,8 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       console.log('All influencers:', influencers);
       
       if (!influencer) {
-        throw new Error(`Influencer with ID ${selectedInfluencerId} not found`);
+        console.warn(`Influencer with ID ${selectedInfluencerId} not found in local array, but proceeding with order creation`);
+        // Continue with order creation even if influencer not found locally
       }
       
       const fullName = (influencer?.name || '').trim();
@@ -373,15 +374,15 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       const first_name = parts[0] || '';
       const last_name = parts.slice(1).join(' ');
       
-             // Prepare shipping address with minimal required fields
+             // Prepare shipping address using only form data (no fallbacks)
        const shipping_address = {
-         first_name,
-         last_name,
-         address1: shippingDetails.address || (influencer as any)?.address || '123 Test Street',
-         city: shippingDetails.city || 'Test City',
-         province: shippingDetails.state || 'Test State',
+         first_name: shippingDetails.firstName,
+         last_name: shippingDetails.lastName,
+         address1: shippingDetails.address,
+         city: shippingDetails.city,
+         province: shippingDetails.state,
          country: 'India',
-         zip: shippingDetails.zipCode || '12345'
+         zip: shippingDetails.zipCode
        };
       
                      // Prepare line items with minimal required fields
@@ -391,36 +392,49 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
           price: isZeroValueOrder ? "0.00" : it.price.toString()
         }));
       
-                   // First create the order in actual Shopify through BRMH
-      // Try multiple approaches to ensure it works
+                   // Generate a unique order ID for tracking
       let actualShopifyOrderId = `SHO-${Date.now()}`;
       
+      // Create order in Shopify through BRMH execute
+      console.log('Creating order through BRMH execute API');
+      
       try {
-        // Approach 1: Minimal payload
-        const minimalPayload = {
+        const shopifyOrderPayload = {
           executeType: "namespace",
           namespaceId: "b429f105-4b19-4ce1-97dd-984e98c72f3c",
           accountId: "f60444cb-203e-45a4-8bc9-c6c4cf4a3ed2",
           methodId: "270b2e8d-b480-48f4-863a-4193db3b52a2",
           requestBody: {
             order: {
-              email: shippingDetails.email || influencer?.email || 'test@example.com',
-              line_items: line_items.map(item => ({
-                variant_id: Number(item.variant_id),
-                quantity: Number(item.quantity)
+              email: shippingDetails.email,
+              line_items: selectedItems.map(item => ({
+                variant_id: Number(item.variantId),
+                quantity: Number(item.qty),
+                price: isZeroValueOrder ? "0.00" : item.price.toString(),
+                title: item.title
               })),
-              financial_status: "pending"
+              financial_status: "pending",
+              // Add customer information using only form data (no fallbacks)
+              customer: {
+                first_name: shippingDetails.firstName,
+                last_name: shippingDetails.lastName,
+                email: shippingDetails.email
+              },
+              // Add shipping address using real data (without phone to avoid conflicts)
+              shipping_address: shipping_address,
+              // Add billing address using real data (without phone to avoid conflicts)
+              billing_address: shipping_address
             }
           },
           save: false
         };
 
-        console.log('Attempting Shopify order creation with minimal payload:', minimalPayload);
+        console.log('Creating Shopify order with payload:', shopifyOrderPayload);
         
         const shopifyRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/execute`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(minimalPayload)
+          body: JSON.stringify(shopifyOrderPayload)
         });
         
         console.log('Shopify order creation response status:', shopifyRes.status);
@@ -428,95 +442,63 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
         if (shopifyRes.ok) {
           const shopifyBody = await shopifyRes.json();
           console.log('Shopify order creation response:', shopifyBody);
-          actualShopifyOrderId = shopifyBody?.result?.id || shopifyBody?.order?.id || actualShopifyOrderId;
+          actualShopifyOrderId = shopifyBody?.data?.order?.id || shopifyBody?.order?.id || actualShopifyOrderId;
           console.log('Successfully created Shopify order with ID:', actualShopifyOrderId);
         } else {
           const errorText = await shopifyRes.text();
           console.error('Shopify order creation failed:', errorText);
-          
-          // Try approach 2: With shipping address
-          const withShippingPayload = {
-            executeType: "namespace",
-            namespaceId: "b429f105-4b19-4ce1-97dd-984e98c72f3c",
-            accountId: "f60444cb-203e-45a4-8bc9-c6c4cf4a3ed2",
-            methodId: "270b2e8d-b480-48f4-863a-4193db3b52a2",
-            requestBody: {
-              order: {
-                email: shippingDetails.email || influencer?.email || 'test@example.com',
-                line_items: line_items.map(item => ({
-                  variant_id: Number(item.variant_id),
-                  quantity: Number(item.quantity)
-                })),
-                shipping_address: {
-                  first_name: shipping_address.first_name,
-                  last_name: shipping_address.last_name,
-                  address1: shipping_address.address1,
-                  city: shipping_address.city,
-                  province: shipping_address.province,
-                  country: shipping_address.country,
-                  zip: shipping_address.zip
-                },
-                financial_status: "pending"
-              }
-            },
-            save: false
-          };
-
-          console.log('Trying with shipping address:', withShippingPayload);
-          
-          const shopifyRes2 = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/execute`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withShippingPayload)
-          });
-
-          if (shopifyRes2.ok) {
-            const shopifyBody2 = await shopifyRes2.json();
-            console.log('Shopify order creation response (with shipping):', shopifyBody2);
-            actualShopifyOrderId = shopifyBody2?.result?.id || shopifyBody2?.order?.id || actualShopifyOrderId;
-            console.log('Successfully created Shopify order with shipping, ID:', actualShopifyOrderId);
-          } else {
-            const errorText2 = await shopifyRes2.text();
-            console.error('Shopify order creation with shipping also failed:', errorText2);
-            console.log('Proceeding with local order creation only. Shopify integration will be implemented later.');
-          }
+          console.log('Proceeding with local order creation only');
         }
       } catch (error) {
         console.error('Shopify order creation error:', error);
-        console.log('Proceeding with local order creation only. Shopify integration will be implemented later.');
+        console.log('Proceeding with local order creation only');
+      }
+      
+      // Validate required data before creating order
+      if (!selectedInfluencerId) {
+        throw new Error('No influencer selected');
+      }
+      
+      if (!shippingDetails.firstName || !shippingDetails.lastName || !shippingDetails.email) {
+        throw new Error('Missing required shipping details');
       }
       
       // Create local order record with the actual Shopify order ID
-      const orderData = {
+      const orderData: any = {
         influencerId: selectedInfluencerId,
-        companyId: "company-1",
-        shopifyOrderId: String(actualShopifyOrderId), // Use the actual Shopify order ID
+        shopifyOrderId: String(actualShopifyOrderId || `local-${Date.now()}`), // Ensure we have a valid order ID
         status: "Created",
         trackingInfo: {
           status: "Processing",
           trackingNumber: "",
-          estimatedDelivery: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+          estimatedDelivery: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
         },
         products: selectedItems.map(it => ({
-          id: String(it.variantId),
-          name: it.title,
-          price: Number(it.price),
-          quantity: it.qty
+          id: String(it.variantId || ""),
+          name: it.title || "",
+          price: Number(it.price) || 0,
+          quantity: Number(it.qty) || 0
         })),
         shippingDetails: {
-          firstName: shippingDetails.firstName || first_name,
-          lastName: shippingDetails.lastName || last_name,
-          address: shippingDetails.address,
-          city: shippingDetails.city,
-          state: shippingDetails.state,
-          zipCode: shippingDetails.zipCode,
-          phone: shippingDetails.phone,
-          email: shippingDetails.email || influencer?.email || ''
+          firstName: shippingDetails.firstName || "",
+          lastName: shippingDetails.lastName || "",
+          address: shippingDetails.address || "",
+          city: shippingDetails.city || "",
+          state: shippingDetails.state || "",
+          zipCode: shippingDetails.zipCode || "",
+          phone: shippingDetails.phone || "",
+          email: shippingDetails.email || ""
         },
-        totalAmount: Math.round(getRealTotal())
+        totalAmount: Math.round(getRealTotal()) || 0
       };
 
-      console.log('Creating local order record:', orderData);
+      console.log('Creating local order record:', JSON.stringify(orderData, null, 2));
+      console.log('Order data types:', {
+        influencerId: typeof orderData.influencerId,
+        shopifyOrderId: typeof orderData.shopifyOrderId,
+        status: typeof orderData.status,
+        totalAmount: typeof orderData.totalAmount
+      });
       
       // Use the correct BRMH CRUD API to create the order
       const res = await fetch('/api/orders', {
@@ -541,14 +523,17 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       
       console.log('Order created successfully in both Shopify and local system!');
       
-      // Optionally, reflect status on the influencer
+      // Update influencer status to OrderCreated after successful order creation
       try {
-        await updateInfluencer(selectedInfluencerId, { 
+        console.log('Updating influencer status to OrderCreated for ID:', selectedInfluencerId);
+        const updatedInfluencer = await updateInfluencer(selectedInfluencerId, { 
           status: "OrderCreated",
           updatedAt: new Date()
         } as any);
+        console.log('Successfully updated influencer status:', updatedInfluencer);
       } catch (e) {
-        console.warn('Failed to update influencer status after order:', e);
+        console.error('Failed to update influencer status after order:', e);
+        // Don't fail the entire order creation, but log the error
       }
       
       // success: close wizard

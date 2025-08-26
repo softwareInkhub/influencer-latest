@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
     
+    // Check for required fields before validation
+    const requiredFields = ['influencerId', 'shopifyOrderId'];
+    for (const field of requiredFields) {
+      if (!body[field]) {
+        console.error(`Missing required field: ${field}`);
+        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
+      }
+    }
+    
     const validated = insertOrderSchema.parse(body);
     console.log('Validated order data:', JSON.stringify(validated, null, 2));
     
@@ -52,6 +61,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('POST /api/orders error:', error);
+    if (error instanceof Error) {
+      return NextResponse.json({ 
+        error: "Invalid order data", 
+        details: error.message 
+      }, { status: 400 });
+    }
     return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
   }
 }

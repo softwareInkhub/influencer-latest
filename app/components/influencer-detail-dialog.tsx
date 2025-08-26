@@ -474,7 +474,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Input
-                          placeholder="Channel name"
+                          placeholder="Enter YouTube channel name"
                           value={editForm.youtubeChannel}
                           onChange={(e) => setEditForm({...editForm, youtubeChannel: e.target.value})}
                         />
@@ -482,7 +482,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
                       <div>
                         <Input
                           type="number"
-                          placeholder="Subscribers"
+                          placeholder="Enter subscriber count"
                           value={editForm.youtubeSubscribers}
                           onChange={(e) => setEditForm({...editForm, youtubeSubscribers: e.target.value})}
                         />
