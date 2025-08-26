@@ -34,7 +34,7 @@ export interface UpdateInfluencerRequest {
 }
 
 export class BRMHInfluencerAPI {
-  private baseURL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/crud`;
+  private baseURL = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/crud`;
   private tableName = 'brmh-influencers';
 
   // Transform influencer data to match table structure
@@ -97,15 +97,30 @@ export class BRMHInfluencerAPI {
       console.warn('Failed to read address from tableData.data:', e);
     }
 
+    // Use actual social media data from BRMH, don't generate dummy data
+    const actualSocialMedia = socialMedia || {};
+
+    // Map the role to proper status
+    let status = 'PendingApproval';
+    if (tableData.role === 'OrderCreat') {
+      status = 'OrderCreated';
+    } else if (tableData.role === 'Approved') {
+      status = 'Approved';
+    } else if (tableData.role === 'Active') {
+      status = 'Active';
+    }
+
     const result = {
-      id: tableData.id,
-      name: tableData.name,
-      email: tableData.email,
-      phone: tableData.phone,
-      address: extractedAddress,
-      status: tableData.role,
+      id: tableData.id || tableData._metadata?.originalId || tableData.originalId || '',
+      name: tableData.name || '',
+      email: tableData.email || '',
+      phone: tableData.phone || '',
+      address: extractedAddress || '',
+      status: status,
+      age: tableData.age || 0,
+      gender: tableData.gender || '',
       categories: categories,
-      socialMedia: socialMedia,
+      socialMedia: actualSocialMedia, // Use actual data from BRMH
       createdAt: tableData.createdAt,
       updatedAt: tableData.updatedAt
     };
@@ -297,7 +312,7 @@ export class BRMHInfluencerAPI {
   // Test connection
   async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/test`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/test`);
       return response.ok;
     } catch (error) {
       console.error('BRMH connection test failed:', error);

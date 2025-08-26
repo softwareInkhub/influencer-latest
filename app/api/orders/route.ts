@@ -7,28 +7,26 @@ const brmhOrders = new BRMHOrdersAPI();
 
 export async function GET() {
   try {
-    let brmh: any[] = [];
-    try {
-      brmh = await brmhOrders.listOrders();
-    } catch (e) {
-      console.warn('⚠️ BRMH list orders failed, using memory only');
-    }
-    const mem = await storage.getOrders();
-    // Merge by id/shopifyOrderId to avoid duplicates
-    const seen = new Set<string>();
-    const merged: any[] = [];
-    for (const o of brmh) {
-      const key = String((o as any).id || (o as any).shopifyOrderId);
-      seen.add(key);
-      merged.push(o);
-    }
-    for (const o of mem) {
-      const key = String((o as any).id || (o as any).shopifyOrderId);
-      if (!seen.has(key)) merged.push(o);
-    }
-    return NextResponse.json(merged);
+    console.log('=== GET ORDERS REQUEST ===');
+    console.log('Fetching orders from BRMH...');
+    
+    const orders = await brmhOrders.listOrders();
+    console.log(`✅ Returning ${orders.length} orders from BRMH`);
+    console.log('BRMH orders:', JSON.stringify(orders, null, 2));
+    
+    // Only return BRMH data - no fallback to dummy data
+    return NextResponse.json(orders || []);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+    console.error('❌ Error fetching orders from BRMH:', error);
+    console.error('Error Details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    });
+    
+    // Return empty array instead of dummy data
+    console.log('⚠️ BRMH connection failed - returning empty array');
+    return NextResponse.json([]);
   }
 }
 

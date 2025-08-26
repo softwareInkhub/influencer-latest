@@ -417,20 +417,20 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Mail className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700" data-testid="infl-email">{current.email || 'himashu@gmail.com'}</span>
+                    <span className="text-sm text-gray-700" data-testid="infl-email">{current.email || 'No email provided'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700" data-testid="infl-phone">{current.phone || '+918002499033'}</span>
+                    <span className="text-sm text-gray-700" data-testid="infl-phone">{current.phone || 'No phone provided'}</span>
                   </div>
                   <div className="flex items-start space-x-3">
                     <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                     <span className="text-sm text-gray-700" data-testid="infl-location">{(() => {
                       const addr = (current as any).address;
-                      if (!addr) return 'piska more';
-                      if (typeof addr === 'string') return addr || 'piska more';
+                      if (!addr) return 'No address provided';
+                      if (typeof addr === 'string') return addr || 'No address provided';
                       const parts = [addr.city, addr.state, addr.country, addr.pin].filter((v: any) => !!v && String(v).trim() !== '');
-                      return parts.length ? parts.join(', ') : 'piska more';
+                      return parts.length ? parts.join(', ') : 'No address provided';
                     })()}</span>
                   </div>
                 </div>
@@ -494,37 +494,63 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
                 <p className="text-sm text-gray-500 text-center py-4" data-testid="infl-socials">No social media accounts added</p>
               ) : (
                 <div className="space-y-3" data-testid="infl-socials">
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-500 rounded-lg flex items-center justify-center">
-                        <Instagram className="w-4 h-4 text-white" />
+                  {current.socialMedia?.instagram && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-500 rounded-lg flex items-center justify-center">
+                          <Instagram className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{current.socialMedia.instagram.handle || 'No handle'}</p>
+                          <p className="text-xs text-gray-500">Instagram</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">@himanshu</p>
-                        <p className="text-xs text-gray-500">Instagram</p>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {current.socialMedia.instagram.followers ? 
+                            (current.socialMedia.instagram.followers >= 1000000 ? 
+                              `${(current.socialMedia.instagram.followers / 1000000).toFixed(1)}M` :
+                              current.socialMedia.instagram.followers >= 1000 ? 
+                                `${(current.socialMedia.instagram.followers / 1000).toFixed(1)}K` :
+                                current.socialMedia.instagram.followers.toString()
+                            ) : '0'
+                          }
+                        </p>
+                        <p className="text-xs text-gray-500">followers</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">19.3M</p>
-                      <p className="text-xs text-gray-500">followers</p>
-                    </div>
-                  </div>
+                  )}
                   
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-100">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-                        <Youtube className="w-4 h-4 text-white" />
+                  {current.socialMedia?.youtube && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
+                          <Youtube className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{current.socialMedia.youtube.channel || 'No channel'}</p>
+                          <p className="text-xs text-gray-500">YouTube</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">@himanshu</p>
-                        <p className="text-xs text-gray-500">YouTube</p>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {current.socialMedia.youtube.subscribers ? 
+                            (current.socialMedia.youtube.subscribers >= 1000000 ? 
+                              `${(current.socialMedia.youtube.subscribers / 1000000).toFixed(1)}M` :
+                              current.socialMedia.youtube.subscribers >= 1000 ? 
+                                `${(current.socialMedia.youtube.subscribers / 1000).toFixed(1)}K` :
+                                current.socialMedia.youtube.subscribers.toString()
+                            ) : '0'
+                          }
+                        </p>
+                        <p className="text-xs text-gray-500">subscribers</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">24.8M</p>
-                      <p className="text-xs text-gray-500">subscribers</p>
-                    </div>
-                  </div>
+                  )}
+                  
+                  {(!current.socialMedia?.instagram && !current.socialMedia?.youtube) && (
+                    <p className="text-sm text-gray-500 text-center py-4">No social media accounts added</p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -539,16 +565,20 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
                   <span className="text-sm text-gray-600">Joined</span>
                   <div className="flex items-center space-x-1">
                     <Calendar className="w-3 h-3 text-gray-400" />
-                    <span className="text-sm text-gray-900" data-testid="infl-joined">21/08/2025</span>
+                    <span className="text-sm text-gray-900" data-testid="infl-joined">
+                      {current.createdAt ? new Date(current.createdAt).toLocaleDateString() : 'Unknown'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Last Updated</span>
-                  <span className="text-sm text-gray-900" data-testid="infl-updated">21/08/2025</span>
+                  <span className="text-sm text-gray-900" data-testid="infl-updated">
+                    {current.updatedAt ? new Date(current.updatedAt).toLocaleDateString() : 'Unknown'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">ID</span>
-                  <span className="text-xs font-mono text-gray-500" data-testid="infl-id">3463b641-a419-42a7-8d0c-651e92b9153e</span>
+                  <span className="text-xs font-mono text-gray-500" data-testid="infl-id">{current.id || 'Unknown'}</span>
                 </div>
               </div>
             </CardContent>

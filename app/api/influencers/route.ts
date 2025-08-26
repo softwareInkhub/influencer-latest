@@ -8,38 +8,34 @@ const brmhStorage = new BRMHStorage();
 
 export async function GET() {
   console.log('=== GET INFLUENCERS REQUEST ===');
-  console.log('Fetching influencers from BRMH...');
+  console.log('Fetching influencers from BRMH table: brmh-influencers');
   
   try {
     const isBRMHConnected = await brmhStorage.testConnection();
     console.log('BRMH Connection Status:', isBRMHConnected);
     
+    if (!isBRMHConnected) {
+      console.error('❌ BRMH connection failed - cannot fetch real data');
+      return NextResponse.json({ error: "BRMH connection failed" }, { status: 500 });
+    }
+    
     const brmhInfluencers = await brmhStorage.getInfluencers();
-    console.log(`✅ Returning ${brmhInfluencers.length} influencers from BRMH`);
+    console.log(`✅ Returning ${brmhInfluencers.length} influencers from BRMH table`);
     console.log('BRMH influencers:', JSON.stringify(brmhInfluencers, null, 2));
     
-    // Also check what's in memory storage for comparison
-    const memInfluencers = await storage.getInfluencers();
-    console.log(`Memory storage has ${memInfluencers.length} influencers`);
-    console.log('Memory influencers:', JSON.stringify(memInfluencers, null, 2));
-    
-    return NextResponse.json(brmhInfluencers);
+    // Only return real data from BRMH table - NO DUMMY DATA
+    return NextResponse.json(brmhInfluencers || []);
   } catch (error) {
-    console.error('❌ Error fetching influencers from BRMH:', error);
+    console.error('❌ Error fetching influencers from BRMH table:', error);
     console.error('Error Details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : 'Unknown'
     });
-    // Fallback to in-memory storage so the UI still has data
-    try {
-      const fallback = await storage.getInfluencers();
-      console.log(`⬇️ Fallback to memory: returning ${fallback.length} influencers`);
-      return NextResponse.json(fallback);
-    } catch (memErr) {
-      console.error('❌ Fallback to memory failed:', memErr);
-      return NextResponse.json({ error: "Failed to fetch influencers" }, { status: 500 });
-    }
+    
+    // Return error instead of dummy data
+    console.log('⚠️ BRMH table fetch failed - returning error');
+    return NextResponse.json({ error: "Failed to fetch influencers from BRMH table" }, { status: 500 });
   }
 }
 

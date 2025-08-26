@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const requestedLimit = limit ? Number(limit) : 50;
     
     // Try using BRMH crud endpoint like the other working APIs
-    const brmhUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.brmh.io';
+    const brmhUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in';
     const tableName = 'shopify-inkhub-get-products';
     
     console.log('=== TRYING BRMH CRUD APPROACH ===');

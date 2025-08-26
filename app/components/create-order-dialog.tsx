@@ -417,7 +417,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
 
         console.log('Attempting Shopify order creation with minimal payload:', minimalPayload);
         
-        const shopifyRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/execute`, {
+        const shopifyRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/execute`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(minimalPayload)
@@ -464,7 +464,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
 
           console.log('Trying with shipping address:', withShippingPayload);
           
-          const shopifyRes2 = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/execute`, {
+          const shopifyRes2 = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/execute`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withShippingPayload)

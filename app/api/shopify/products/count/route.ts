@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const vendor = searchParams.get('vendor');
     
     // Try using BRMH crud endpoint like the other working APIs
-    const brmhUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.brmh.io';
+    const brmhUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in';
     
     console.log('=== TRYING BRMH CRUD APPROACH FOR COUNT ===');
     

@@ -68,7 +68,7 @@ export class MemStorage implements IStorage {
   }
 
   private initializeData() {
-    // Initialize roles
+    // Initialize only essential roles - no dummy data
     const adminRole: Role = {
       id: randomUUID(),
       name: "Admin",
@@ -82,98 +82,8 @@ export class MemStorage implements IStorage {
     this.roles.set(adminRole.id, adminRole);
     this.roles.set(influencerRole.id, influencerRole);
 
-    // Initialize sample company
-    const company: Company = {
-      id: randomUUID(),
-      name: "Demo Company",
-      phone: "+1 (555) 123-4567",
-      email: "contact@demo.com",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.companies.set(company.id, company);
-
-    // Initialize message templates
-    const templates: MessageTemplate[] = [
-      {
-        id: randomUUID(),
-        type: "Text+Image",
-        message: "Welcome to our influencer program! We're excited to work with you. Here are your next steps...",
-        workflowCategory: "Onboarding",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: randomUUID(),
-        type: "Text",
-        message: "Great news! Your order has been shipped. Track your package here: {tracking_link}",
-        workflowCategory: "Order Updates",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: randomUUID(),
-        type: "Text",
-        message: "Hi! Just a friendly reminder to upload your content for the {campaign_name}. The deadline is in 2 days.",
-        workflowCategory: "Content",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
-    templates.forEach(template => this.messageTemplates.set(template.id, template));
-
-    // Initialize sample influencers
-    const sampleInfluencers: Influencer[] = [
-      {
-        id: randomUUID(),
-        name: "Sarah Johnson",
-        age: 25,
-        gender: "Female",
-        socialMedia: {
-          instagram: { handle: "@sarahjohnson", followers: 125000 },
-          youtube: { channel: "Sarah's World", subscribers: 87000 }
-        },
-        phone: "+1 (555) 234-5678",
-        email: "sarah.johnson@example.com",
-        address: "123 Main St, Los Angeles, CA",
-        status: "Approved",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: randomUUID(),
-        name: "Michael Chen",
-        age: 28,
-        gender: "Male",
-        socialMedia: {
-          instagram: { handle: "@michaelchen", followers: 89000 },
-          youtube: { channel: "Mike's Tech", subscribers: 45000 }
-        },
-        phone: "+1 (555) 345-6789",
-        email: "michael.chen@example.com",
-        address: "456 Oak Ave, San Francisco, CA",
-        status: "OrderCreated",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: randomUUID(),
-        name: "Emma Davis",
-        age: 23,
-        gender: "Female",
-        socialMedia: {
-          instagram: { handle: "@emmadavis", followers: 67000 },
-          youtube: { channel: "Emma's Style", subscribers: 23000 }
-        },
-        phone: "+1 (555) 456-7890",
-        email: "emma.davis@example.com",
-        address: "789 Pine St, New York, NY",
-        status: "PendingApproval",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
-    sampleInfluencers.forEach(influencer => this.influencers.set(influencer.id, influencer));
+    // No dummy data - only real data from BRMH will be used
+    console.log('Storage initialized with no dummy data - only real data from BRMH will be used');
   }
 
   // User methods

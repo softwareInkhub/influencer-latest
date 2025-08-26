@@ -18,7 +18,7 @@ type BrmhOrderTableItem = {
 };
 
 export class BRMHOrdersAPI {
-  private baseURL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/crud`;
+  private baseURL = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/crud`;
   private tableName = 'brmh-Influencer-orders';
 
   private toTableItem(order: Order): BrmhOrderTableItem {
@@ -156,7 +156,7 @@ export class BRMHOrdersAPI {
 
   async testConnection(): Promise<boolean> {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/test`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brmh.in'}/test`);
       return res.ok;
     } catch {
       return false;
