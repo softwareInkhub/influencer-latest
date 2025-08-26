@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  console.log('=== SHOPIFY PRODUCTS API CALLED ===');
+  console.log('URL:', request.url);
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q');
@@ -25,22 +27,34 @@ export async function GET(request: NextRequest) {
       const responseData = await response.json();
       console.log('BRMH CRUD Success Response:', JSON.stringify(responseData, null, 2));
       
-      if (responseData.success && responseData.items) {
-        // Transform products from BRMH table format
-        const products = responseData.items.map((item: any) => ({
-          id: item.id,
-          title: item.title || item.name,
-          thumbnail: item.image?.src || item.thumbnail?.src || item.thumbnail,
-          variants: item.variants || [{
-            variantId: item.id,
-            title: item.title || item.name,
-            price: item.price || "0.00",
-            compareAtPrice: item.compareAtPrice || item.compare_at_price,
-            stock: item.stock || item.inventory || 50,
-            image: item.image?.src || item.thumbnail?.src || item.thumbnail
-          }],
-          totalStock: item.stock || item.inventory || 50
-        }));
+              if (responseData.success && responseData.items) {
+          // Transform products from BRMH table format
+          const products = responseData.items.map((item: any) => {
+            // Transform variants to include variantId
+            const variants = (item.variants || []).map((v: any, index: number) => ({
+              variantId: v.id || `${item.id}_${index}`, // Use variant ID or generate one
+              title: v.title,
+              price: v.price,
+              compareAtPrice: v.compare_at_price,
+              stock: v.inventory_quantity || 50,
+              image: v.image_id ? item.images?.find((img: any) => img.id === v.image_id)?.src : item.image?.src
+            }));
+            
+            return {
+              id: item.id,
+              title: item.title,
+              thumbnail: item.image?.src || item.thumbnail?.src || item.thumbnail,
+              variants: variants.length > 0 ? variants : [{
+                variantId: item.id,
+                title: item.title,
+                price: item.price || "0.00",
+                compareAtPrice: item.compareAtPrice || item.compare_at_price,
+                stock: item.stock || item.inventory || 50,
+                image: item.image?.src || item.thumbnail?.src || item.thumbnail
+              }],
+              totalStock: variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0) || (item.stock || item.inventory || 50)
+            };
+          });
         
         // Apply search filter if provided
         let filteredProducts = products;
@@ -78,20 +92,32 @@ export async function GET(request: NextRequest) {
         console.log(`Success with table ${altTableName}:`, JSON.stringify(altData, null, 2));
         
         if (altData.success && altData.items) {
-          const products = altData.items.map((item: any) => ({
-            id: item.id,
-            title: item.title || item.name,
-            thumbnail: item.image?.src || item.thumbnail?.src || item.thumbnail,
-            variants: item.variants || [{
-              variantId: item.id,
-              title: item.title || item.name,
-              price: item.price || "0.00",
-              compareAtPrice: item.compareAtPrice || item.compare_at_price,
-              stock: item.stock || item.inventory || 50,
-              image: item.image?.src || item.thumbnail?.src || item.thumbnail
-            }],
-            totalStock: item.stock || item.inventory || 50
-          }));
+          const products = altData.items.map((item: any) => {
+            // Transform variants to include variantId
+            const variants = (item.variants || []).map((v: any, index: number) => ({
+              variantId: v.id || `${item.id}_${index}`, // Use variant ID or generate one
+              title: v.title,
+              price: v.price,
+              compareAtPrice: v.compare_at_price,
+              stock: v.inventory_quantity || 50,
+              image: v.image_id ? item.images?.find((img: any) => img.id === v.image_id)?.src : item.image?.src
+            }));
+            
+            return {
+              id: item.id,
+              title: item.title,
+              thumbnail: item.image?.src || item.thumbnail?.src || item.thumbnail,
+              variants: variants.length > 0 ? variants : [{
+                variantId: item.id,
+                title: item.title,
+                price: item.price || "0.00",
+                compareAtPrice: item.compareAtPrice || item.compare_at_price,
+                stock: item.stock || item.inventory || 50,
+                image: item.image?.src || item.thumbnail?.src || item.thumbnail
+              }],
+              totalStock: variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0) || (item.stock || item.inventory || 50)
+            };
+          });
           
           let filteredProducts = products;
           if (q) {
@@ -169,27 +195,40 @@ export async function GET(request: NextRequest) {
         // Create thumbnail URL with proper sizing
         const thumbnail = mainImage ? `${mainImage}&width=112&height=112&crop=center` : null;
         
-        const variants = (p.variants || []).map((v: any) => {
-          // Get variant-specific image if available
-          let variantImage = mainImage; // Default to main product image
-          
-          if (v.image_id && p.images) {
-            // Find the specific image for this variant
-            const variantSpecificImage = p.images.find((img: any) => img.id === v.image_id);
-            if (variantSpecificImage) {
-              variantImage = variantSpecificImage.src;
-            }
-          }
-          
-          return {
-            variantId: v.id,
-            title: v.title,
-            price: v.price,
-            compareAtPrice: v.compare_at_price,
-            stock: v.inventory_quantity || 50, // Use actual inventory quantity
-            image: variantImage,
-          };
-        });
+                 const variants = (p.variants || []).map((v: any, index: number) => {
+           // Get variant-specific image if available
+           let variantImage = mainImage; // Default to main product image
+           
+           if (v.image_id && p.images) {
+             // Find the specific image for this variant
+             const variantSpecificImage = p.images.find((img: any) => img.id === v.image_id);
+             if (variantSpecificImage) {
+               variantImage = variantSpecificImage.src;
+             }
+           }
+           
+           // Always create a unique variantId using product ID and variant index
+           // This ensures each variant has a unique identifier even if Shopify doesn't provide one
+           const variantId = `${p.id}_${index}`;
+           
+           console.log(`Product ${p.title} - Variant ${index}:`, {
+             originalId: v.id,
+             generatedId: variantId,
+             title: v.title,
+             price: v.price
+           });
+           
+           const variant = {
+             variantId: variantId,
+             title: v.title,
+             price: v.price,
+             compareAtPrice: v.compare_at_price,
+             stock: v.inventory_quantity || 50, // Use actual inventory quantity
+             image: variantImage,
+           };
+           
+           return variant;
+         });
         
         const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
         
@@ -202,7 +241,9 @@ export async function GET(request: NextRequest) {
         };
       });
       
-      return NextResponse.json({ products: payload, nextPageInfo: null, prevPageInfo: null });
+              console.log('Final payload sample:', JSON.stringify(payload.slice(0, 2), null, 2));
+        console.log('=== API RESPONSE SENT ===');
+        return NextResponse.json({ products: payload, nextPageInfo: null, prevPageInfo: null });
     }
     
     // All approaches failed

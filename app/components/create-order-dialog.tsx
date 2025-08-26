@@ -79,7 +79,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   const [isCreating, setIsCreating] = useState(false);
 
   // Shopify products + selection state
-  type ShopifyVariant = { variantId: number; title: string; price: number; compareAtPrice?: number; stock: number; image?: string | null };
+  type ShopifyVariant = { variantId: number | string; title: string; price: number; compareAtPrice?: number; stock: number; image?: string | null };
   type ShopifyProduct = { id: number; title: string; thumbnail?: string | null; variants: ShopifyVariant[]; totalStock: number };
   const [shopProducts, setShopProducts] = useState<ShopifyProduct[]>([]);
   const [nextPageInfo, setNextPageInfo] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   const [inflightController, setInflightController] = useState<AbortController | null>(null);
-  const [selectedItems, setSelectedItems] = useState<Array<{ productId: number; variantId: number; title: string; price: number; qty: number }>>([]);
+  const [selectedItems, setSelectedItems] = useState<Array<{ productId: number; variantId: number | string; title: string; price: number; qty: number }>>([]);
   const [creatingShopify, setCreatingShopify] = useState(false);
   const [createdShopifyOrderId, setCreatedShopifyOrderId] = useState<string | null>(null);
   const [wizardKey] = useState<string>(() => Math.random().toString(36).slice(2));
@@ -159,19 +159,19 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
     setLoadingProducts(true);
     setProductError(null);
     
-    // Check cache first (only for new searches, not for pagination)
-    if (!page) {
-      const cached = getCachedProducts(searchQuery.trim());
-      if (cached) {
-        setShopProducts(cached.products);
-        setTotalCount(cached.totalCount);
-        setNextPageInfo(null);
-        setPrevPageInfo(null);
-        setIsDataFromCache(true);
-        setLoadingProducts(false);
-        return;
-      }
-    }
+    // Check cache first (only for new searches, not for pagination) - DISABLED FOR DEBUGGING
+    // if (!page) {
+    //   const cached = getCachedProducts(searchQuery.trim());
+    //   if (cached) {
+    //     setShopProducts(cached.products);
+    //     setTotalCount(cached.totalCount);
+    //     setNextPageInfo(null);
+    //     setPrevPageInfo(null);
+    //     setIsDataFromCache(true);
+    //     setLoadingProducts(false);
+    //     return;
+    //   }
+    // }
     setIsDataFromCache(false);
     
     const params = new URLSearchParams();
@@ -192,7 +192,15 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       const controller = new AbortController();
       setInflightController(controller);
       
-      const res = await fetch(`/api/shopify/products?${params.toString()}`, { signal: controller.signal });
+      const res = await fetch(`/api/shopify/products?${params.toString()}&t=${Date.now()}`, { 
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (!res.ok) throw new Error(await res.text());
       const body = await res.json();
       
@@ -213,6 +221,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
             }
           }
           
+          console.log('Updated shopProducts:', allProducts.map(p => ({ id: p.id, title: p.title, variants: p.variants.map((v: any) => ({ variantId: v.variantId, title: v.title })) })));
           return allProducts;
         });
         
@@ -225,12 +234,19 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
         }, 100);
       } else {
         // New search: replace all products
+        console.log('Setting new shopProducts:', body.products?.map((p: any) => ({ id: p.id, title: p.title, variants: p.variants.map((v: any) => ({ variantId: v.variantId, title: v.title })) })));
+        console.log('Raw products from API:', body.products?.slice(0, 2));
         setShopProducts(body.products || []);
         
-        // Cache the results for new searches
-        if (body.products && body.products.length > 0) {
-          setCachedProducts(searchQuery.trim(), body.products, body.products.length);
-        }
+        // Debug: Check what's in the state after setting
+        setTimeout(() => {
+          console.log('ShopProducts state after setting:', shopProducts.slice(0, 2));
+        }, 100);
+        
+        // Cache the results for new searches - DISABLED FOR DEBUGGING
+        // if (body.products && body.products.length > 0) {
+        //   setCachedProducts(searchQuery.trim(), body.products, body.products.length);
+        // }
       }
       
       setNextPageInfo(body.nextPageInfo || null);
@@ -250,7 +266,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       setNextPageInfo(null); 
       setPrevPageInfo(null); 
       setPageIndex(0);
-      // Check cache for count first
+            // Check cache for count first
       const cached = getCachedProducts(searchQuery.trim());
       if (cached) {
         setTotalCount(cached.totalCount);
@@ -314,24 +330,38 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   // Removed IntersectionObserver since we're using manual "Load more" button
 
   const addVariant = (productId: number, v: ShopifyVariant) => {
+    console.log('=== ADD VARIANT DEBUG ===');
+    console.log('Product ID:', productId);
+    console.log('Variant object:', v);
+    console.log('Variant ID:', v.variantId);
+    console.log('Variant ID type:', typeof v.variantId);
+    console.log('Adding variant:', { productId, variantId: v.variantId, title: v.title, price: v.price });
     setSelectedItems(prev => {
       const idx = prev.findIndex(it => it.variantId === v.variantId);
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        console.log('Updated existing item:', copy[idx]);
         return copy;
       }
-      return [...prev, { productId, variantId: v.variantId, title: v.title || "Variant", price: Number(v.price), qty: 1 }];
+      // Get the product title to make variant title unique
+      const product = shopProducts.find(p => p.id === productId);
+      const uniqueTitle = product ? `${product.title} - ${v.title || "Variant"}` : v.title || "Variant";
+      const newItem = { productId, variantId: v.variantId, title: uniqueTitle, price: Number(v.price), qty: 1 };
+      console.log('Added new item:', newItem);
+      return [...prev, newItem];
     });
   };
 
-  const updateSelectedQty = (variantId: number, qty: number) => {
+  const updateSelectedQty = (variantId: number | string, qty: number) => {
     setSelectedItems(prev => prev.filter(it => (it.variantId === variantId ? qty > 0 : true)).map(it => it.variantId === variantId ? { ...it, qty } : it));
   };
 
-  const getVariantQty = (variantId: number) => {
+  const getVariantQty = (variantId: number | string) => {
     const found = selectedItems.find(it => it.variantId === variantId);
-    return found ? found.qty : 0;
+    const qty = found ? found.qty : 0;
+    console.log(`getVariantQty(${variantId}) = ${qty}, selectedItems:`, selectedItems);
+    return qty;
   };
 
   const getSelectedTotal = () => selectedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
@@ -863,6 +893,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                         {p.variants.length <= 1 ? (
                           (() => {
                             const v = p.variants[0];
+                            console.log(`Product ${p.title} (ID: ${p.id}) has variant:`, v);
                             const qty = getVariantQty(v.variantId);
                             return qty > 0 ? (
                               <div className="flex items-center space-x-2">
@@ -934,6 +965,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80">
+                      {(() => { console.log('Rendering selectedItems:', selectedItems); return null; })()}
                       <div className="space-y-2">
                         <h4 className="font-medium">Selected Items</h4>
                         {selectedItems.map(it => (
@@ -1325,10 +1357,15 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      onClick={() => {
-                        clearProductCache();
-                        fetchProducts(null);
-                      }}
+                              onClick={() => {
+          // Force complete refresh
+          clearProductCache();
+          localStorage.clear(); // Clear ALL localStorage
+          sessionStorage.clear(); // Clear ALL sessionStorage
+          setSelectedItems([]); // Clear selected items when refreshing
+          setShopProducts([]); // Clear products to force fresh fetch
+          window.location.reload(); // Force complete page reload
+        }}
                       className="flex items-center gap-1"
                       title="Refresh product data from server"
                     >
@@ -1371,6 +1408,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                             {variantsCount <= 1 ? (
                               (() => {
                                 const v = p.variants[0];
+                                console.log(`Product ${p.title} (ID: ${p.id}) has variant:`, v);
                                 const qty = getVariantQty(v.variantId);
                                 return qty > 0 ? (
                                   <div className="flex items-center space-x-2" aria-label={`Quantity for ${p.title}`}>
@@ -1473,22 +1511,25 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                   {selectedItems.length === 0 ? (
                     <div className="text-sm text-gray-500">Nothing selected yet.</div>
                   ) : (
-                    selectedItems.map(it => (
-                      <div key={it.variantId} className="flex items-center space-x-3 p-2 border rounded">
-                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                          <Package className="w-5 h-5 text-gray-400" />
+                    <>
+                      {console.log('Rendering selectedItems:', selectedItems)}
+                      {selectedItems.map(it => (
+                        <div key={it.variantId} className="flex items-center space-x-3 p-2 border rounded">
+                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                            <Package className="w-5 h-5 text-gray-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate" title={it.title}>{it.title}</div>
+                            <div className="text-xs text-gray-500">₹{it.price}</div>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(it.variantId, Math.max(0, getVariantQty(it.variantId) - 1))}>-</Button>
+                            <span className="w-6 text-center text-sm">{getVariantQty(it.variantId)}</span>
+                            <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(it.variantId, getVariantQty(it.variantId) + 1)}>+</Button>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate" title={it.title}>{it.title}</div>
-                          <div className="text-xs text-gray-500">₹{it.price}</div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(it.variantId, Math.max(0, getVariantQty(it.variantId) - 1))}>-</Button>
-                          <span className="w-6 text-center text-sm">{getVariantQty(it.variantId)}</span>
-                          <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(it.variantId, getVariantQty(it.variantId) + 1)}>+</Button>
-                        </div>
-                      </div>
-                    ))
+                      ))}
+                    </>
                   )}
                 </div>
                 <div className="p-3 border-t">
@@ -1505,7 +1546,13 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
               <div className="px-4 py-3 flex items-center justify-between">
                 <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)}>Back</Button>
                 <div className="text-sm text-gray-600">Selected {getSelectedCount()} • Total ₹{getSelectedTotal().toFixed(2)}</div>
-                <Button onClick={() => setCurrentStep(3)} disabled={selectedItems.length === 0 || loadingProducts}>Next</Button>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setCurrentStep(3)} 
+                  disabled={selectedItems.length === 0 || loadingProducts}
+                >
+                  Next
+                </Button>
               </div>
             </div>
           </div>
