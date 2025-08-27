@@ -14,7 +14,21 @@ interface HomeProps {
 }
 
 export default function Home({ onLogout }: HomeProps) {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(() => {
+    // Get the stored tab from localStorage, default to "dashboard"
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeTab') || "dashboard";
+    }
+    return "dashboard";
+  });
+
+  // Save active tab to localStorage whenever it changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeTab', value);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -50,7 +64,7 @@ export default function Home({ onLogout }: HomeProps) {
 
         {/* Tab Navigation */}
         <div className="px-4 pb-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid grid-cols-6 h-12 w-full bg-gray-100/50 rounded-xl p-1">
               <TabsTrigger 
                 value="dashboard" 

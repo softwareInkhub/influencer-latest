@@ -105,7 +105,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   const [inflightController, setInflightController] = useState<AbortController | null>(null);
-  const [selectedItems, setSelectedItems] = useState<Array<{ productId: number; variantId: number | string; title: string; price: number; qty: number }>>([]);
+  const [selectedItems, setSelectedItems] = useState<Array<{ productId: number; variantId: number | string; title: string; price: number; qty: number; image?: string | null }>>([]);
   const [creatingShopify, setCreatingShopify] = useState(false);
   const [createdShopifyOrderId, setCreatedShopifyOrderId] = useState<string | null>(null);
   const [wizardKey] = useState<string>(() => Math.random().toString(36).slice(2));
@@ -362,7 +362,14 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       // Get the product title to make variant title unique
       const product = shopProducts.find(p => p.id === productId);
       const uniqueTitle = product ? `${product.title} - ${v.title || "Variant"}` : v.title || "Variant";
-      const newItem = { productId, variantId: v.variantId, title: uniqueTitle, price: Number(v.price), qty: 1 };
+      const newItem = { 
+        productId, 
+        variantId: v.variantId, 
+        title: uniqueTitle, 
+        price: Number(v.price), 
+        qty: 1,
+        image: v.image || product?.thumbnail || null // Add product image
+      };
       console.log('Added new item:', newItem);
       return [...prev, newItem];
     });
@@ -1418,24 +1425,31 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                       return (
                         <div 
                           key={p.id} 
-                          className={`flex flex-col border rounded-lg hover:bg-gray-50 overflow-hidden cursor-pointer transition-colors ${
+                          className={`flex flex-col border rounded-lg hover:bg-gray-50 overflow-hidden transition-colors ${
                             disabledAll 
                               ? 'cursor-not-allowed opacity-60' 
-                              : getVariantQty(p.variants[0]?.variantId) > 0 
-                                ? 'border-blue-500 bg-blue-50' 
-                                : ''
+                              : variantsCount === 1 
+                                ? getVariantQty(p.variants[0]?.variantId) > 0 
+                                  ? 'border-blue-500 bg-blue-50 cursor-pointer' 
+                                  : 'cursor-pointer'
+                                : 'cursor-default'
                           }`}
                           onClick={() => {
                             if (disabledAll) return; // Don't allow selection for out-of-stock products
-                            const v = p.variants[0];
-                            if (v) {
-                              const currentQty = getVariantQty(v.variantId);
-                              if (currentQty > 0) {
-                                updateSelectedQty(v.variantId, 0); // Remove if already selected
-                              } else {
-                                addVariant(p.id as any, v); // Add if not selected
+                            // For single variant products, auto-select the variant
+                            if (variantsCount === 1) {
+                              const v = p.variants[0];
+                              if (v) {
+                                const currentQty = getVariantQty(v.variantId);
+                                if (currentQty > 0) {
+                                  updateSelectedQty(v.variantId, 0); // Remove if already selected
+                                } else {
+                                  addVariant(p.id as any, v); // Add if not selected
+                                }
                               }
                             }
+                            // For multi-variant products, clicking the card doesn't auto-select
+                            // User must click the "variants" link to choose specific variants
                           }}
                           title={disabledAll ? 'Out of stock' : ''}
                         >
@@ -1450,26 +1464,30 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                                 className={`w-4 h-4 border-2 rounded transition-colors ${
                                   disabledAll 
                                     ? 'border-gray-200 bg-gray-100 cursor-not-allowed' 
-                                    : getVariantQty(p.variants[0]?.variantId) > 0 
-                                      ? 'border-blue-500 bg-blue-500 cursor-pointer' 
-                                      : 'border-gray-300 bg-white cursor-pointer'
+                                    : variantsCount === 1 
+                                      ? getVariantQty(p.variants[0]?.variantId) > 0 
+                                        ? 'border-blue-500 bg-blue-500 cursor-pointer' 
+                                        : 'border-gray-300 bg-white cursor-pointer'
+                                      : 'border-gray-300 bg-white cursor-default'
                                 }`}
                                 onClick={(e) => {
                                   e.stopPropagation(); // Prevent card click when clicking checkbox
                                   if (disabledAll) return; // Don't allow selection for out-of-stock products
-                                  const v = p.variants[0];
-                                  if (v) {
-                                    const currentQty = getVariantQty(v.variantId);
-                                    if (currentQty > 0) {
-                                      updateSelectedQty(v.variantId, 0); // Remove if already selected
-                                    } else {
-                                      addVariant(p.id as any, v); // Add if not selected
+                                  if (variantsCount === 1) {
+                                    const v = p.variants[0];
+                                    if (v) {
+                                      const currentQty = getVariantQty(v.variantId);
+                                      if (currentQty > 0) {
+                                        updateSelectedQty(v.variantId, 0); // Remove if already selected
+                                      } else {
+                                        addVariant(p.id as any, v); // Add if not selected
+                                      }
                                     }
                                   }
                                 }}
-                                title={disabledAll ? 'Out of stock' : ''}
+                                title={disabledAll ? 'Out of stock' : variantsCount === 1 ? 'Click to select' : 'Click variants to select'}
                               >
-                                {getVariantQty(p.variants[0]?.variantId) > 0 && (
+                                {variantsCount === 1 && getVariantQty(p.variants[0]?.variantId) > 0 && (
                                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
@@ -1514,24 +1532,52 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                                             const qty = getVariantQty(v.variantId);
                                             const disabled = (v.stock || 0) <= 0;
                                             return (
-                                              <div key={v.variantId} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                                              <div key={v.variantId} className={`flex items-center justify-between p-2 border rounded transition-colors ${
+                                                qty > 0 ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                                              }`}>
                                                 <div className="min-w-0 pr-2">
                                                   <p className="text-sm font-medium truncate">{v.title}</p>
-                                                  <p className="text-xs text-gray-600">₹{v.price} • {v.stock} in stock</p>
+                                                  <p className={`text-xs ${disabled ? 'text-red-600' : 'text-gray-600'}`}>
+                                                    ₹{v.price} • {v.stock} in stock
+                                                    {disabled && ' (Out of stock)'}
+                                                  </p>
                                                 </div>
                                                 {qty > 0 ? (
                                                   <div className="flex items-center space-x-1">
-                                                    <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty - 1)}>-</Button>
+                                                    <Button 
+                                                      size="sm" 
+                                                      variant="outline" 
+                                                      className="w-7 h-7 p-0" 
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        updateSelectedQty(v.variantId, qty - 1);
+                                                      }}
+                                                    >
+                                                      -
+                                                    </Button>
                                                     <span className="w-6 text-center text-sm font-medium">{qty}</span>
-                                                    <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty + 1)}>+</Button>
+                                                    <Button 
+                                                      size="sm" 
+                                                      variant="outline" 
+                                                      className="w-7 h-7 p-0" 
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        updateSelectedQty(v.variantId, qty + 1);
+                                                      }}
+                                                    >
+                                                      +
+                                                    </Button>
                                                   </div>
                                                 ) : (
                                                   <Button 
                                                     size="sm" 
                                                     variant="outline" 
                                                     disabled={disabled} 
-                                                    title={disabled ? 'Out of stock' : ''} 
-                                                    onClick={() => addVariant(p.id as any, v)}
+                                                    title={disabled ? 'Out of stock' : `Add ${v.title}`} 
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      addVariant(p.id as any, v);
+                                                    }}
                                                   >
                                                     Add
                                                   </Button>
@@ -1611,7 +1657,19 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                       {selectedItems.map(it => (
                         <div key={it.variantId} className="flex items-center space-x-3 p-2 border rounded">
                           <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                            <Package className="w-5 h-5 text-gray-400" />
+                            {it.image ? (
+                              <img 
+                                src={it.image} 
+                                alt={it.title} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to package icon if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <Package className={`w-5 h-5 text-gray-400 ${it.image ? 'hidden' : ''}`} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate" title={it.title}>{it.title}</div>
