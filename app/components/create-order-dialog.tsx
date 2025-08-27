@@ -61,6 +61,21 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   const { influencers, addOrder, updateInfluencer } = useApp();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedInfluencerId, setSelectedInfluencerId] = useState(selectedInfluencer?.id || "");
+
+  // Initialize step based on whether an influencer is pre-selected
+  useEffect(() => {
+    if (open) {
+      if (selectedInfluencer) {
+        // If influencer is pre-selected, start from Step 1 but show influencer details (skip dropdown)
+        setCurrentStep(1);
+        setSelectedInfluencerId(selectedInfluencer.id);
+      } else {
+        // If no influencer is pre-selected, start from Step 1 (Choose Influencer)
+        setCurrentStep(1);
+        setSelectedInfluencerId("");
+      }
+    }
+  }, [open, selectedInfluencer]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -714,8 +729,14 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   };
 
   const resetForm = () => {
-    setCurrentStep(1);
-    setSelectedInfluencerId(selectedInfluencer?.id || "");
+    // Reset to initial step based on whether influencer is pre-selected
+    if (selectedInfluencer) {
+      setCurrentStep(1);
+      setSelectedInfluencerId(selectedInfluencer.id);
+    } else {
+      setCurrentStep(1);
+      setSelectedInfluencerId("");
+    }
     setOrderItems([]);
     setSelectedItems([]);
     setShippingDetails({
@@ -845,8 +866,12 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                 </div>
               </div>
               
-              {/* Product Cards from Shopify */}
-              <div className="space-y-3 max-h-64 overflow-y-auto" id="product-scroll">
+              {/* Mobile Layout: Two independent scrollable sections */}
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Products Section - Fixed height, never shrinks */}
+                <div className="flex-1 min-h-0">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2">Available Products</h5>
+                  <div className="space-y-3 h-96 lg:h-[28rem] overflow-y-auto" id="product-scroll">
                 {productError && (
                   <div className="text-sm text-red-600">
                     {productError}
@@ -945,54 +970,59 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                 )}
               </div>
               
-              {/* Pagination Controls - Outside scrollable area */}
-                {nextPageInfo && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                    <Button variant="outline" className="w-full" onClick={() => fetchProducts(nextPageInfo)} disabled={loadingProducts}>
-                      {loadingProducts ? 'Loading…' : 'Load more'}
-                    </Button>
-                  </div>
-                )}
-              
-              {/* Sticky Summary using selections */}
-              {selectedItems.length > 0 && (
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 mt-4 pt-4">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full">
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Selected {getSelectedCount()} • Total ₹{getSelectedTotal().toFixed(2)}
+                  {/* Pagination Controls - Outside scrollable area */}
+                  {nextPageInfo && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <Button variant="outline" className="w-full" onClick={() => fetchProducts(nextPageInfo)} disabled={loadingProducts}>
+                        {loadingProducts ? 'Loading…' : 'Load more'}
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      {(() => { console.log('Rendering selectedItems:', selectedItems); return null; })()}
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Selected Items</h4>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Selected Items Section - Fixed compact height, always scrollable */}
+                <div className="lg:max-w-sm">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2">Selected Items</h5>
+                  <div className="space-y-0 h-4 lg:h-8 overflow-y-auto border border-gray-200 rounded-lg p-0.5">
+                    {selectedItems.length > 0 ? (
+                      <>
                         {selectedItems.map(it => (
-                          <div key={it.variantId} className="flex items-center justify-between">
-                            <span className="text-sm truncate">{it.title} × {it.qty}</span>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium">₹{(it.price * it.qty).toFixed(2)}</span>
-                              <div className="flex items-center space-x-1">
-                                <Button size="sm" variant="outline" className="w-6 h-6 p-0" onClick={() => updateSelectedQty(it.variantId, it.qty - 1)}>-</Button>
-                                <span className="w-6 text-center text-sm">{it.qty}</span>
-                                <Button size="sm" variant="outline" className="w-6 h-6 p-0" onClick={() => updateSelectedQty(it.variantId, it.qty + 1)}>+</Button>
-                              </div>
+                          <div key={it.variantId} className="flex items-center justify-between py-0 px-0 bg-gray-50 rounded text-xs">
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium truncate block leading-none text-xs">{it.title}</span>
+                              <span className="text-gray-600 text-xs leading-none">₹{it.price} × {it.qty}</span>
+                            </div>
+                            <div className="flex items-center space-x-0.5 ml-0.5">
+                              <Button size="sm" variant="outline" className="w-1.5 h-1.5 p-0 text-xs" onClick={() => updateSelectedQty(it.variantId, it.qty - 1)}>-</Button>
+                              <span className="w-1 text-center text-xs">{it.qty}</span>
+                              <Button size="sm" variant="outline" className="w-1.5 h-1.5 p-0 text-xs" onClick={() => updateSelectedQty(it.variantId, it.qty + 1)}>+</Button>
                             </div>
                           </div>
                         ))}
-                        <Separator />
-                        <div className="flex justify-between font-medium">
-                          <span>Total</span>
-                          <span>₹{getSelectedTotal().toFixed(2)}</span>
+                        <div className="pt-2 border-t border-gray-200">
+                          <div className="flex justify-between font-medium">
+                            <span>Total:</span>
+                            <span>₹{getSelectedTotal().toFixed(2)}</span>
+                          </div>
                         </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 text-center py-8">
+                        No items selected
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    )}
+                  </div>
                 </div>
-              )}
-              {selectedItems.length === 0 && !productError && !loadingProducts && shopProducts.length > 0 && (
-                <div className="text-sm text-gray-500 mt-4">Total ₹0.00</div>
+              </div>
+              
+              {/* Mobile-friendly summary for small screens */}
+              {selectedItems.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200 lg:hidden">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Selected {getSelectedCount()} items</span>
+                    <span className="text-sm font-semibold">₹{getSelectedTotal().toFixed(2)}</span>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1301,8 +1331,8 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                <div className="flex flex-col h-full min-h-0">
                  {/* Search and filters - fixed at top */}
                  <div className="p-4 space-y-3 border-b bg-white">
-                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <div className="relative flex-1">
+                   <div className="flex flex-row items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <Input
                         placeholder="Search products..."
@@ -1312,7 +1342,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                       />
                     </div>
                     <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                       <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="Availability" /></SelectTrigger>
+                       <SelectTrigger className="w-20 sm:w-32"><SelectValue placeholder="All" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="inStock">In stock</SelectItem>
@@ -1320,7 +1350,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                       </SelectContent>
                     </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                       <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Sort" /></SelectTrigger>
+                       <SelectTrigger className="w-20 sm:w-36"><SelectValue placeholder="Name" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="name">Name</SelectItem>
                         <SelectItem value="price">Price</SelectItem>
@@ -1379,83 +1409,148 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
 
                                    {/* Product list - scrollable area */}
                   <div className="flex-1 overflow-y-auto min-h-0 max-h-[60vh] sm:max-h-[400px] pb-16 md:pb-0" id="product-scroll">
-                    <div className="p-4 space-y-2">
+                    <div className="p-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {shopProducts.map(p => {
                       const lowest = Math.min(...p.variants.map(v => Number(v.price)));
                       const variantsCount = p.variants.length;
                       const disabledAll = p.totalStock <= 0;
                       return (
-                        <div key={p.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                          <div className="w-14 h-14 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                            {p.thumbnail ? <img src={p.thumbnail} alt={p.title} loading="lazy" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-gray-400" />}
+                        <div 
+                          key={p.id} 
+                          className={`flex flex-col border rounded-lg hover:bg-gray-50 overflow-hidden cursor-pointer transition-colors ${
+                            disabledAll 
+                              ? 'cursor-not-allowed opacity-60' 
+                              : getVariantQty(p.variants[0]?.variantId) > 0 
+                                ? 'border-blue-500 bg-blue-50' 
+                                : ''
+                          }`}
+                          onClick={() => {
+                            if (disabledAll) return; // Don't allow selection for out-of-stock products
+                            const v = p.variants[0];
+                            if (v) {
+                              const currentQty = getVariantQty(v.variantId);
+                              if (currentQty > 0) {
+                                updateSelectedQty(v.variantId, 0); // Remove if already selected
+                              } else {
+                                addVariant(p.id as any, v); // Add if not selected
+                              }
+                            }
+                          }}
+                          title={disabledAll ? 'Out of stock' : ''}
+                        >
+                          {/* Product Image */}
+                          <div className="relative">
+                            <div className="w-full h-32 bg-gray-100 overflow-hidden flex items-center justify-center">
+                              {p.thumbnail ? <img src={p.thumbnail} alt={p.title} loading="lazy" className="w-full h-full object-cover" /> : <Package className="w-8 h-8 text-gray-400" />}
+                            </div>
+                            {/* Functional Checkbox */}
+                            <div className="absolute top-2 left-2">
+                              <div 
+                                className={`w-4 h-4 border-2 rounded transition-colors ${
+                                  disabledAll 
+                                    ? 'border-gray-200 bg-gray-100 cursor-not-allowed' 
+                                    : getVariantQty(p.variants[0]?.variantId) > 0 
+                                      ? 'border-blue-500 bg-blue-500 cursor-pointer' 
+                                      : 'border-gray-300 bg-white cursor-pointer'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click when clicking checkbox
+                                  if (disabledAll) return; // Don't allow selection for out-of-stock products
+                                  const v = p.variants[0];
+                                  if (v) {
+                                    const currentQty = getVariantQty(v.variantId);
+                                    if (currentQty > 0) {
+                                      updateSelectedQty(v.variantId, 0); // Remove if already selected
+                                    } else {
+                                      addVariant(p.id as any, v); // Add if not selected
+                                    }
+                                  }
+                                }}
+                                title={disabledAll ? 'Out of stock' : ''}
+                              >
+                                {getVariantQty(p.variants[0]?.variantId) > 0 && (
+                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
+                          
+                          {/* Product Info */}
+                          <div className="p-3 flex-1 flex flex-col">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <h4 className="text-sm font-medium text-gray-900 truncate">{p.title}</h4>
+                                  <h4 className="text-sm font-medium text-gray-900 truncate mb-1">{p.title}</h4>
                                 </TooltipTrigger>
                                 <TooltipContent><p>{p.title}</p></TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-sm font-semibold">₹{lowest}</span>
-                              <Badge variant="outline" className="text-xs">{p.totalStock} in stock</Badge>
-                              {variantsCount > 1 && <span className="text-xs text-gray-500">{variantsCount} variants</span>}
-                            </div>
-                          </div>
-                          <div>
-                            {variantsCount <= 1 ? (
-                              (() => {
-                                const v = p.variants[0];
-                                console.log(`Product ${p.title} (ID: ${p.id}) has variant:`, v);
-                                const qty = getVariantQty(v.variantId);
-                                return qty > 0 ? (
-                                  <div className="flex items-center space-x-2" aria-label={`Quantity for ${p.title}`}>
-                                    <Button aria-label={`Decrease quantity for ${p.title}`} size="sm" variant="outline" className="w-8 h-8 p-0" onClick={() => updateSelectedQty(v.variantId, qty - 1)}>-</Button>
-                                    <span className="w-6 text-center text-sm">{qty}</span>
-                                    <Button aria-label={`Increase quantity for ${p.title}`} size="sm" variant="outline" className="w-8 h-8 p-0" onClick={() => updateSelectedQty(v.variantId, qty + 1)}>+</Button>
-                                  </div>
-                                ) : (
-                                   <Button aria-label={`Add ${p.title}`} size="sm" className="w-full sm:w-auto" disabled={disabledAll || v.stock <= 0} title={(disabledAll || v.stock <= 0) ? 'Out of stock' : ''} onClick={() => addVariant(p.id as any, v)}>Add</Button>
-                                );
-                              })()
-                            ) : (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                   <Button aria-label={`Choose variant for ${p.title}`} size="sm" className="w-full sm:w-auto">Choose variant</Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80">
-                                  <div className="space-y-2">
-                                    {p.variants.map(v => {
-                                      const qty = getVariantQty(v.variantId);
-                                      const disabled = (v.stock || 0) <= 0;
-                                      return (
-                                        <div key={v.variantId} className="flex items-center justify-between">
-                                          <div className="min-w-0 pr-2">
-                                            <p className="text-sm truncate">{v.title}</p>
-                                            <p className="text-xs text-gray-600">₹{v.price} • {v.stock} in stock</p>
-                                          </div>
-                                          {qty > 0 ? (
-                                            <div className="flex items-center space-x-1">
-                                              <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty - 1)}>-</Button>
-                                              <span className="w-6 text-center text-sm">{qty}</span>
-                                              <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty + 1)}>+</Button>
-                                            </div>
-                                          ) : (
-                                             <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled={disabled} title={disabled ? 'Out of stock' : ''} onClick={() => addVariant(p.id as any, v)}>Add</Button>
-                                          )}
+                            
+                            <div className="mt-auto">
+                              <div className="flex flex-col space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <Badge variant="outline" className="text-xs border-gray-300 bg-white text-gray-700 px-3 py-1 whitespace-nowrap">
+                                    {p.totalStock} in stock
+                                  </Badge>
+                                </div>
+                                {variantsCount > 1 && (
+                                  <div className="block">
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button 
+                                          className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-colors cursor-pointer w-full text-left"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {variantsCount} variants
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-80 z-[9999] bg-white shadow-xl border border-gray-200" side="bottom" align="start" sideOffset={5}>
+                                        <div className="space-y-2">
+                                          <h4 className="font-medium text-sm mb-2">Choose variant for {p.title}</h4>
+                                          {p.variants.map(v => {
+                                            const qty = getVariantQty(v.variantId);
+                                            const disabled = (v.stock || 0) <= 0;
+                                            return (
+                                              <div key={v.variantId} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                                                <div className="min-w-0 pr-2">
+                                                  <p className="text-sm font-medium truncate">{v.title}</p>
+                                                  <p className="text-xs text-gray-600">₹{v.price} • {v.stock} in stock</p>
+                                                </div>
+                                                {qty > 0 ? (
+                                                  <div className="flex items-center space-x-1">
+                                                    <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty - 1)}>-</Button>
+                                                    <span className="w-6 text-center text-sm font-medium">{qty}</span>
+                                                    <Button size="sm" variant="outline" className="w-7 h-7 p-0" onClick={() => updateSelectedQty(v.variantId, qty + 1)}>+</Button>
+                                                  </div>
+                                                ) : (
+                                                  <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    disabled={disabled} 
+                                                    title={disabled ? 'Out of stock' : ''} 
+                                                    onClick={() => addVariant(p.id as any, v)}
+                                                  >
+                                                    Add
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
-                                      );
-                                    })}
+                                      </PopoverContent>
+                                    </Popover>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       );
                     })}
+                      </div>
 
                     {!productError && !loadingProducts && shopProducts.length === 0 && (
                         <div className="text-sm text-gray-500 text-center py-8">
@@ -1507,7 +1602,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
               {/* Right: Selected panel */}
               <div className="lg:border-l border-t lg:border-t-0 bg-white flex flex-col min-h-0">
                 <div className="p-3 border-b font-semibold">Selected</div>
-                <div className="flex-1 overflow-auto p-3 space-y-2">
+                <div className="overflow-y-auto p-3 space-y-2 h-[100px] lg:flex-1 lg:min-h-0">
                   {selectedItems.length === 0 ? (
                     <div className="text-sm text-gray-500">Nothing selected yet.</div>
                   ) : (
@@ -1532,7 +1627,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                     </>
                   )}
                 </div>
-                <div className="p-3 border-t">
+                <div className="p-3 border-t mt-auto">
                   <div className="flex items-center justify-between text-sm">
                     <span>Subtotal</span>
                     <span>₹{getSelectedTotal().toFixed(2)}</span>
