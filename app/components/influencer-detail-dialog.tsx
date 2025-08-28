@@ -34,7 +34,7 @@ const getStatusClasses = (status?: string) => {
 
 export default function InfluencerDetailDialog({ influencer, open, onOpenChange }: InfluencerDetailDialogProps) {
   const { updateInfluencer } = useApp();
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [detail, setDetail] = useState<Influencer | null>(null);
@@ -54,16 +54,15 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const authUser = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
-  }, []);
-  const isAdmin = (authUser?.roleName || authUser?.role || '').toString().toUpperCase() === 'ADMIN';
+  // Remove authentication checks - assume admin access for now
+  const isAdmin = true;
+  const headers: Record<string, string> = {};
 
   useEffect(() => {
     if (!open || !influencer?.id) return;
     let cancelled = false;
     const fetchDetail = async () => {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       setNotFound(false);
       try {
@@ -145,7 +144,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     fetchDetail();
@@ -287,7 +286,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
               </span>
             </div>
             <div className="flex-1">
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-2">
                   <div className="h-6 bg-gray-100 rounded w-48" />
                   <div className="h-5 bg-gray-100 rounded w-32" />
@@ -360,7 +359,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
             </div>
           </div>
 
-          {error && !loading && !notFound && (
+          {error && !isLoading && !notFound && (
             <div className="text-sm text-red-600">
               {error}
               <Button variant="outline" size="sm" className="ml-2" onClick={() => {
@@ -374,7 +373,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
           <Card className="border border-gray-200">
             <CardContent className="p-4">
               <h4 className="font-semibold text-gray-900 mb-3">Contact Information</h4>
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-3">
                   <div className="h-4 bg-gray-100 rounded w-48" />
                   <div className="h-4 bg-gray-100 rounded w-40" />
@@ -442,7 +441,7 @@ export default function InfluencerDetailDialog({ influencer, open, onOpenChange 
           <Card className="border border-gray-200">
             <CardContent className="p-4">
               <h4 className="font-semibold text-gray-900 mb-3">Social Media</h4>
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-3">
                   <div className="h-10 bg-gray-100 rounded" />
                   <div className="h-10 bg-gray-100 rounded" />

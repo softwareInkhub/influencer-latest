@@ -38,10 +38,11 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { influencers, content } = useApp();
 
-  const authUser = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
-  }, []);
-  const isAdmin = (authUser?.roleName || authUser?.role || '').toString().toUpperCase() === 'ADMIN';
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Remove authentication checks - assume admin access for now
+  const isAdmin = true;
 
   if (!order) return null;
 
