@@ -80,6 +80,7 @@ export const orders = pgTable("orders", {
     name: string;
     price: number;
     quantity: number;
+    image?: string;
   }>>().default([]),
   shippingDetails: json("shipping_details").$type<{
     firstName: string;

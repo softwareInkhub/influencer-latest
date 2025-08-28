@@ -57,6 +57,23 @@ const MOCK_PRODUCTS: Product[] = [
   { id: "6", name: "Phone Case Designer", price: 39.99, category: "Accessories", inventory: 89 }
 ];
 
+// Function to fetch product image from Shopify
+const fetchProductImage = async (productName: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`/api/shopify/products?q=${encodeURIComponent(productName)}&limit=1`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.products && data.products.length > 0) {
+        const product = data.products[0];
+        return product.thumbnail || null;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching product image:', error);
+  }
+  return null;
+};
+
 export default function CreateOrderDialog({ open, onOpenChange, selectedInfluencer }: CreateOrderDialogProps) {
   const { influencers, addOrder, updateInfluencer } = useApp();
   const [currentStep, setCurrentStep] = useState(1);
@@ -76,6 +93,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
       }
     }
   }, [open, selectedInfluencer]);
+
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -92,6 +110,8 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
     email: ""
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
 
   // Shopify products + selection state
   type ShopifyVariant = { variantId: number | string; title: string; price: number; compareAtPrice?: number; stock: number; image?: string | null };
@@ -106,6 +126,37 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
   const [productError, setProductError] = useState<string | null>(null);
   const [inflightController, setInflightController] = useState<AbortController | null>(null);
   const [selectedItems, setSelectedItems] = useState<Array<{ productId: number; variantId: number | string; title: string; price: number; qty: number; image?: string | null }>>([]);
+  
+  // Fetch product images for selected items
+  useEffect(() => {
+    if (selectedItems.length > 0) {
+      const fetchMissingImages = async () => {
+        const newImages: Record<string, string> = {};
+        const newLoadingStates: Record<string, boolean> = {};
+        
+        for (const item of selectedItems) {
+          if (!item.image || item.image.trim() === '') {
+            newLoadingStates[item.title] = true;
+            const imageUrl = await fetchProductImage(item.title);
+            if (imageUrl) {
+              newImages[item.title] = imageUrl;
+            }
+            newLoadingStates[item.title] = false;
+          }
+        }
+        
+        if (Object.keys(newImages).length > 0) {
+          setProductImages(prev => ({ ...prev, ...newImages }));
+        }
+        if (Object.keys(newLoadingStates).length > 0) {
+          setLoadingImages(prev => ({ ...prev, ...newLoadingStates }));
+        }
+      };
+      
+      fetchMissingImages();
+    }
+  }, [selectedItems]);
+  
   const [creatingShopify, setCreatingShopify] = useState(false);
   const [createdShopifyOrderId, setCreatedShopifyOrderId] = useState<string | null>(null);
   const [wizardKey] = useState<string>(() => Math.random().toString(36).slice(2));
@@ -1168,8 +1219,25 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                 <div className="space-y-2">
                   {selectedItems.map(item => (
                     <div key={item.variantId} className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                        <Package className="w-5 h-5 text-gray-400" />
+                      <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                        {item.image || productImages[item.title] ? (
+                          <img 
+                            src={item.image || productImages[item.title]} 
+                            alt={item.title} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : loadingImages[item.title] ? (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                          </div>
+                        ) : null}
+                        <Package className={`w-5 h-5 text-gray-400 ${item.image || productImages[item.title] || loadingImages[item.title] ? 'hidden' : ''}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h5 className="text-sm font-medium text-gray-900 truncate">{item.title}</h5>

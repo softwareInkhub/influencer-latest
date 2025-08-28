@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -13,6 +13,23 @@ interface OrderDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+// Function to fetch product image from Shopify
+const fetchProductImage = async (productName: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`/api/shopify/products?q=${encodeURIComponent(productName)}&limit=1`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.products && data.products.length > 0) {
+        const product = data.products[0];
+        return product.thumbnail || null;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching product image:', error);
+  }
+  return null;
+};
 
 const getStatusClasses = (status?: string) => {
   const normalized = (status || "").toString().toLowerCase();
@@ -40,9 +57,41 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
 
   // Remove authentication checks - assume admin access for now
   const isAdmin = true;
+
+  // Fetch product images for products without images - MUST be before conditional return
+  useEffect(() => {
+    if (order && order.products) {
+      const fetchMissingImages = async () => {
+        const newImages: Record<string, string> = {};
+        const newLoadingStates: Record<string, boolean> = {};
+        
+        for (const product of order.products) {
+          if (!(product as any).image || (product as any).image.trim() === '') {
+            newLoadingStates[product.name] = true;
+            const imageUrl = await fetchProductImage(product.name);
+            if (imageUrl) {
+              newImages[product.name] = imageUrl;
+            }
+            newLoadingStates[product.name] = false;
+          }
+        }
+        
+        if (Object.keys(newImages).length > 0) {
+          setProductImages(prev => ({ ...prev, ...newImages }));
+        }
+        if (Object.keys(newLoadingStates).length > 0) {
+          setLoadingImages(prev => ({ ...prev, ...newLoadingStates }));
+        }
+      };
+      
+      fetchMissingImages();
+    }
+  }, [order]);
 
   if (!order) return null;
 
@@ -171,8 +220,25 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                   order.products.map((product, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                          <Package className="w-4 h-4 text-gray-600" />
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                          {((product as any).image && (product as any).image.trim() !== '') || productImages[product.name] ? (
+                            <img 
+                              src={(product as any).image || productImages[product.name]} 
+                              alt={product.name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to icon if image fails to load
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : loadingImages[product.name] ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <div className="w-3 h-3 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                            </div>
+                          ) : null}
+                          <Package className={`w-4 h-4 text-gray-600 ${((product as any).image && (product as any).image.trim() !== '') || productImages[product.name] || loadingImages[product.name] ? 'hidden' : ''}`} />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{product.name}</p>
