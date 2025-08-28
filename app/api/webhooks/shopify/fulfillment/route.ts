@@ -17,12 +17,37 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(raw);
     const shopifyOrderId = String(body?.fulfillment?.order_id || body?.order_id || "");
     
-    // mark in transit in BRMH first (source of truth), fallback to memory
+    // Update shipment data in BRMH first (source of truth), fallback to memory
     try {
       const all = await brmhOrders.listOrders();
       const found = all.find((o: any) => String(o.shopifyOrderId) === shopifyOrderId);
       if (found) {
-        await brmhOrders.updateOrder(String((found as any).id), { status: "InTransit", updatedAt: new Date() } as any);
+        // Extract fulfillment data from Shopify webhook
+        const fulfillment = body?.fulfillment;
+        const trackingInfo = {
+          status: fulfillment?.tracking_company ? "InTransit" : "Processing",
+          trackingNumber: fulfillment?.tracking_number || null,
+          carrier: fulfillment?.tracking_company || null,
+          trackingUrl: fulfillment?.tracking_url || null,
+          estimatedDelivery: fulfillment?.estimated_delivery_at ? new Date(fulfillment.estimated_delivery_at) : null,
+          lastUpdated: new Date().toISOString(),
+          deliveryHistory: fulfillment?.tracking_number ? [
+            {
+              status: "Shipped",
+              timestamp: new Date().toISOString(),
+              location: fulfillment?.tracking_company || "Unknown",
+              description: `Package shipped via ${fulfillment?.tracking_company || 'carrier'}`
+            }
+          ] : []
+        };
+
+        await brmhOrders.updateOrder(String((found as any).id), { 
+          status: "InTransit", 
+          trackingInfo,
+          updatedAt: new Date() 
+        } as any);
+        
+        console.log('✅ Updated shipment data in BRMH for order:', shopifyOrderId);
       }
     } catch (e) {
       console.warn('⚠️ BRMH update from fulfillment webhook failed:', e);

@@ -74,6 +74,15 @@ export const orders = pgTable("orders", {
     status: string;
     trackingNumber: string;
     estimatedDelivery: Date;
+    carrier?: string;
+    trackingUrl?: string;
+    deliveryHistory?: Array<{
+      status: string;
+      timestamp: string;
+      location?: string;
+      description?: string;
+    }>;
+    lastUpdated?: string;
   }>(),
   products: json("products").$type<Array<{
     id: string;

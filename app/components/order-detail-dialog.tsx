@@ -3,9 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-import { Package, Truck, MapPin, Calendar, Clock, Upload, Mail, Phone, Eye, Copy, ExternalLink, MessageCircle, CheckCircle } from "lucide-react";
+import { Package, Truck, MapPin, Calendar, Clock, Upload, Mail, Phone, Eye, Copy, ExternalLink, MessageCircle, CheckCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import VideoUploadDialog from "./video-upload-dialog";
+import { useShipmentData } from "../hooks/use-shipment-data";
 import type { Order } from "../../shared/schema";
 
 interface OrderDetailDialogProps {
@@ -14,22 +15,7 @@ interface OrderDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Function to fetch product image from Shopify
-const fetchProductImage = async (productName: string): Promise<string | null> => {
-  try {
-    const response = await fetch(`/api/shopify/products?q=${encodeURIComponent(productName)}&limit=1`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.products && data.products.length > 0) {
-        const product = data.products[0];
-        return product.thumbnail || null;
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching product image:', error);
-  }
-  return null;
-};
+// Product image fetching function removed
 
 const getStatusClasses = (status?: string) => {
   const normalized = (status || "").toString().toLowerCase();
@@ -59,39 +45,18 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
   const [error, setError] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [isDeliveryHistoryExpanded, setIsDeliveryHistoryExpanded] = useState(true);
+
+  // Enhanced shipment data with auto-refresh
+  const { shipmentData, isLoading: shipmentLoading, error: shipmentError, refreshShipmentData } = useShipmentData(
+    order?.id || null,
+    60000 // 60 seconds auto-refresh
+  );
 
   // Remove authentication checks - assume admin access for now
   const isAdmin = true;
 
-  // Fetch product images for products without images - MUST be before conditional return
-  useEffect(() => {
-    if (order && order.products) {
-      const fetchMissingImages = async () => {
-        const newImages: Record<string, string> = {};
-        const newLoadingStates: Record<string, boolean> = {};
-        
-        for (const product of order.products) {
-          if (!(product as any).image || (product as any).image.trim() === '') {
-            newLoadingStates[product.name] = true;
-            const imageUrl = await fetchProductImage(product.name);
-            if (imageUrl) {
-              newImages[product.name] = imageUrl;
-            }
-            newLoadingStates[product.name] = false;
-          }
-        }
-        
-        if (Object.keys(newImages).length > 0) {
-          setProductImages(prev => ({ ...prev, ...newImages }));
-        }
-        if (Object.keys(newLoadingStates).length > 0) {
-          setLoadingImages(prev => ({ ...prev, ...newLoadingStates }));
-        }
-      };
-      
-      fetchMissingImages();
-    }
-  }, [order]);
+  // Product image fetching disabled
 
   if (!order) return null;
 
@@ -261,77 +226,169 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
             </CardContent>
           </Card>
 
-          {/* Shipment Section */}
+          {/* Enhanced Shipment Section - Mobile App Design */}
           <Card className="border border-gray-200">
             <CardContent className="p-4">
               <h4 className="font-semibold text-gray-900 mb-3">Shipment</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Truck className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">Carrier</span>
-                  </div>
-                  <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-                    {order.trackingInfo?.status || 'Processing'}
-                  </Badge>
+
+              {shipmentLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="ml-2 text-sm text-gray-600">Loading shipment data...</span>
                 </div>
-                
-                {order.trackingInfo?.trackingNumber && (
+              ) : shipmentError ? (
+                <div className="text-red-500 text-sm py-2">{shipmentError}</div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Carrier Status - Mobile App Style */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Package className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-700">Tracking</span>
-                    </div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-mono text-sm">{order.trackingInfo.trackingNumber}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(order.trackingInfo.trackingNumber)}
-                        className="w-6 h-6 p-0"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-6 h-6 p-0"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </Button>
+                      <Truck className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm text-gray-900">
+                        {shipmentData?.carrier || 'Carrier'}
+                      </span>
                     </div>
+                                         <Badge className="bg-green-100 text-green-800 border-green-200 text-xs font-medium px-2 py-1 rounded-full">
+                       {(() => {
+                         // Determine current status based on delivery history
+                         if (shipmentData?.deliveryHistory?.length > 0) {
+                           const latestEvent = shipmentData.deliveryHistory[0]; // Most recent event
+                           if (latestEvent.status.includes('Out for Delivery')) return 'Out for Delivery';
+                           if (latestEvent.status.includes('In Transit')) return 'In Transit';
+                           if (latestEvent.status.includes('Shipped')) return 'Shipped';
+                           if (latestEvent.status.includes('Confirmed')) return 'Order Confirmed';
+                         }
+                         return shipmentData?.status || 'Processing';
+                       })()}
+                     </Badge>
                   </div>
-                )}
-                
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-700">ETA: {formatDDMMYYYY(order.trackingInfo?.estimatedDelivery || new Date())}</span>
-                </div>
-              </div>
-              
-              {/* Timeline */}
-              <div className="mt-4">
-                <div className="flex items-center space-x-2">
-                  {['Created', 'In Transit', 'Delivered'].map((step, index) => (
-                    <div key={step} className="flex items-center">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                        index < getTimelineStep(order.status)
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}>
-                        {index < getTimelineStep(order.status) ? <CheckCircle className="w-3 h-3" /> : index + 1}
+                  
+                  {/* Tracking Number - Mobile App Style */}
+                  {shipmentData?.trackingNumber && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Package className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-900">Tracking ID:</span>
                       </div>
-                      {index < 2 && (
-                        <div className={`w-8 h-0.5 mx-1 ${
-                          index < getTimelineStep(order.status) - 1 ? 'bg-blue-500' : 'bg-gray-200'
-                        }`} />
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-sm text-gray-900">{shipmentData.trackingNumber}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(shipmentData.trackingNumber)}
+                          className="w-5 h-5 p-0 hover:bg-gray-100"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                        {shipmentData.trackingUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(shipmentData.trackingUrl, '_blank')}
+                            className="w-5 h-5 p-0 hover:bg-gray-100"
+                            title="Track Package"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  )}
+                  
+                  {/* ETA - Mobile App Style */}
+                  {shipmentData?.estimatedDelivery && (
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm text-gray-900">
+                        ETA: {new Date(shipmentData.estimatedDelivery).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+
+
+                                     {/* Delivery History - Mobile App Style */}
+                   {shipmentData?.deliveryHistory && shipmentData.deliveryHistory.length > 0 && (
+                     <div className="mt-6">
+                       <div className="flex items-center justify-between mb-3">
+                         <h5 className="text-sm font-medium text-gray-900">Delivery History</h5>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => setIsDeliveryHistoryExpanded(!isDeliveryHistoryExpanded)}
+                           className="w-6 h-6 p-0 hover:bg-gray-100"
+                         >
+                           {isDeliveryHistoryExpanded ? (
+                             <ChevronUp className="w-4 h-4 text-gray-600" />
+                           ) : (
+                             <ChevronDown className="w-4 h-4 text-gray-600" />
+                           )}
+                         </Button>
+                       </div>
+                       
+                       {isDeliveryHistoryExpanded && (
+                         <div className="relative">
+                           {/* Vertical timeline line - connects to the center of the current event */}
+                           {shipmentData.deliveryHistory.length > 1 && (
+                             <div className="absolute left-3 top-8 w-0.5 bg-gray-200" style={{ height: `${(shipmentData.deliveryHistory.length - 1) * 4 + 1}rem` }}></div>
+                           )}
+                           
+                           <div className="space-y-4">
+                             {shipmentData.deliveryHistory.map((event, index) => {
+                               const getEventIcon = (status: string) => {
+                                 if (status.includes('Confirmed')) return CheckCircle;
+                                 if (status.includes('Shipped')) return Package;
+                                 if (status.includes('Transit')) return Truck;
+                                 if (status.includes('Delivery')) return MapPin;
+                                 return CheckCircle;
+                               };
+                               
+                               const EventIcon = getEventIcon(event.status);
+                               const isCurrentEvent = index === 0; // Only the first (most recent) event is current
+                               
+                               return (
+                                 <div key={index} className="flex items-start relative">
+                                   {/* Timeline dot - larger size */}
+                                   <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
+                                     isCurrentEvent ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                                   }`}>
+                                     <EventIcon className="w-3 h-3" />
+                                   </div>
+                                  
+                                                                   {/* Content */}
+                                   <div className="flex-1 ml-4">
+                                     <div className="font-medium text-gray-900 text-sm">{event.status}</div>
+                                     {event.description && (
+                                       <div className="text-gray-600 text-sm mt-1">{event.description}</div>
+                                     )}
+                                     <div className="text-gray-500 text-xs mt-1">
+                                       {event.location && `${event.location} - `}
+                                       {new Date(event.timestamp).toLocaleDateString('en-GB', {
+                                         day: '2-digit',
+                                         month: 'short',
+                                         year: 'numeric'
+                                       })}, {new Date(event.timestamp).toLocaleTimeString('en-GB', {
+                                         hour: '2-digit',
+                                         minute: '2-digit'
+                                       })}
+                                     </div>
+                                   </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                       )}
+                     </div>
+                   )}
+                                 </div>
+               )}
+             </CardContent>
+           </Card>
 
           {/* Content Status Section */}
           <Card className="border border-gray-200">
