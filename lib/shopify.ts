@@ -172,6 +172,43 @@ export async function completeDraftOrder(draftOrderId: number): Promise<any> {
   return await res.json();
 }
 
+export async function createOrder(payload: {
+  email?: string;
+  shipping_address: any;
+  line_items: Array<{ variant_id: number; quantity: number }>;
+  tags?: string[];
+  note?: string;
+  financial_status?: string;
+  fulfillment_status?: string;
+}): Promise<any> {
+  const orderBody: any = {
+    order: {
+      line_items: payload.line_items,
+      shipping_address: payload.shipping_address,
+      customer: payload.email ? { email: payload.email } : undefined,
+      financial_status: payload.financial_status || "pending",
+      fulfillment_status: payload.fulfillment_status || "unfulfilled",
+    },
+  };
+  
+  // Add tags if provided
+  if (payload.tags && payload.tags.length > 0) {
+    orderBody.order.tags = payload.tags.join(", ");
+  }
+  
+  // Add note if provided
+  if (payload.note) {
+    orderBody.order.note = payload.note;
+  }
+  
+  const res = await shopifyFetch(`/orders.json`, {
+    method: "POST",
+    body: JSON.stringify(orderBody),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return (await res.json()).order;
+}
+
 export function verifyShopifyHmac(rawBody: string, hmacHeader?: string | null): boolean {
   const { SHOPIFY_WEBHOOK_SECRET } = getShopifyConfig();
   if (!SHOPIFY_WEBHOOK_SECRET) return true; // if secret is not set, allow but log
