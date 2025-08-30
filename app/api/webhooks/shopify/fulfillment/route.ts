@@ -24,21 +24,27 @@ export async function POST(request: NextRequest) {
       if (found) {
         // Extract fulfillment data from Shopify webhook
         const fulfillment = body?.fulfillment;
+        
+        // Get existing order to preserve delivery history
+        const existingOrder = found;
+        const existingHistory = existingOrder?.trackingInfo?.deliveryHistory || [];
+        
+        // Create new delivery history entry
+        const newHistoryEntry = {
+          status: "Order Fulfilled",
+          timestamp: new Date().toISOString(),
+          location: fulfillment?.tracking_company || "System",
+          description: `Order has been fulfilled${fulfillment?.tracking_company ? ` via ${fulfillment.tracking_company}` : ''}`
+        };
+        
         const trackingInfo = {
-          status: fulfillment?.tracking_company ? "InTransit" : "Processing",
+          status: "InTransit",
           trackingNumber: fulfillment?.tracking_number || null,
           carrier: fulfillment?.tracking_company || null,
           trackingUrl: fulfillment?.tracking_url || null,
           estimatedDelivery: fulfillment?.estimated_delivery_at ? new Date(fulfillment.estimated_delivery_at) : null,
           lastUpdated: new Date().toISOString(),
-          deliveryHistory: fulfillment?.tracking_number ? [
-            {
-              status: "Shipped",
-              timestamp: new Date().toISOString(),
-              location: fulfillment?.tracking_company || "Unknown",
-              description: `Package shipped via ${fulfillment?.tracking_company || 'carrier'}`
-            }
-          ] : []
+          deliveryHistory: [newHistoryEntry, ...existingHistory] // Add new entry at the beginning
         };
 
         await brmhOrders.updateOrder(String((found as any).id), { 
@@ -46,11 +52,9 @@ export async function POST(request: NextRequest) {
           trackingInfo,
           updatedAt: new Date() 
         } as any);
-        
-        console.log('✅ Updated shipment data in BRMH for order:', shopifyOrderId);
       }
     } catch (e) {
-      console.warn('⚠️ BRMH update from fulfillment webhook failed:', e);
+      console.warn('BRMH update from fulfillment webhook failed:', e);
     }
     
     try {

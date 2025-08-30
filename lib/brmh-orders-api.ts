@@ -59,30 +59,24 @@ export class BRMHOrdersAPI {
   }
 
   async listOrders(): Promise<Order[]> {
-    console.log('=== BRMH ORDERS API: LIST ORDERS ===');
-    console.log('BRMH Request URL:', `${this.baseURL}?tableName=${this.tableName}&pagination=true&itemPerPage=100`);
-    
     const res = await fetch(`${this.baseURL}?tableName=${this.tableName}&pagination=true&itemPerPage=100`);
-    
-    console.log('BRMH Response Status:', res.status);
     
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('BRMH Error Response:', errorText);
+      console.error('BRMH list orders failed:', errorText);
       throw new Error(`BRMH list orders failed: ${res.status} ${res.statusText} - ${errorText}`);
     }
     
     const body = await res.json();
-    console.log('BRMH Success Response:', JSON.stringify(body, null, 2));
-    
     const items = Array.isArray(body?.items) ? body.items : [];
-    console.log('Found items:', items.length);
     
     return items.map((it: any) => this.fromTableItem(it));
   }
 
   async getOrder(id: string): Promise<Order> {
-    const res = await fetch(`${this.baseURL}?tableName=${this.tableName}&id=${encodeURIComponent(id)}`);
+    // Add cache-busting parameter to force fresh data
+    const timestamp = Date.now();
+    const res = await fetch(`${this.baseURL}?tableName=${this.tableName}&id=${encodeURIComponent(id)}&_t=${timestamp}`);
     if (!res.ok) throw new Error(`BRMH get order failed: ${res.status}`);
     const body = await res.json();
     if (!body?.success || !body?.item) throw new Error('Order not found');
@@ -90,15 +84,8 @@ export class BRMHOrdersAPI {
   }
 
   async createOrder(order: Order): Promise<{ success: boolean; itemId: string }> {
-    console.log('=== BRMH ORDERS API: CREATE ORDER ===');
-    console.log('Input order data:', JSON.stringify(order, null, 2));
-    
     const tableItem = this.toTableItem(order);
-    console.log('Transformed table item:', JSON.stringify(tableItem, null, 2));
-    
     const requestBody = { item: tableItem };
-    console.log('BRMH Request URL:', `${this.baseURL}?tableName=${this.tableName}`);
-    console.log('BRMH Request Body:', JSON.stringify(requestBody, null, 2));
     
     const res = await fetch(`${this.baseURL}?tableName=${this.tableName}`, {
       method: 'POST',
@@ -106,21 +93,19 @@ export class BRMHOrdersAPI {
       body: JSON.stringify(requestBody)
     });
     
-    console.log('BRMH Response Status:', res.status);
-    console.log('BRMH Response Headers:', Object.fromEntries(res.headers.entries()));
-    
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('BRMH Error Response:', errorText);
+      console.error('BRMH create order failed:', errorText);
       throw new Error(`BRMH create order failed: ${res.status} ${res.statusText} - ${errorText}`);
     }
     
-    const responseData = await res.json();
-    console.log('BRMH Success Response:', JSON.stringify(responseData, null, 2));
-    return responseData;
+    return res.json();
   }
 
   async updateOrder(id: string, updates: Partial<Order>): Promise<{ success: boolean }> {
+    // Production logging - reduced for performance
+    console.log(`BRMH: Updating order ${id}`);
+    
     const partial: any = {};
     if (updates.status !== undefined) partial.status = updates.status;
     if (updates.shopifyOrderId !== undefined) partial.shopifyOrderId = updates.shopifyOrderId;
@@ -135,12 +120,20 @@ export class BRMHOrdersAPI {
     if (updates.trackingInfo !== undefined) data.trackingInfo = updates.trackingInfo;
     if (Object.keys(data).length > 0) partial.data = data;
 
+    const requestBody = { key: { id }, updates: partial };
+
     const res = await fetch(`${this.baseURL}?tableName=${this.tableName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: { id }, updates: partial })
+      body: JSON.stringify(requestBody)
     });
-    if (!res.ok) throw new Error(`BRMH update order failed: ${res.status}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('BRMH update failed:', errorText);
+      throw new Error(`BRMH update order failed: ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    
     return res.json();
   }
 

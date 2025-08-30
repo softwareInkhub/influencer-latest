@@ -23,7 +23,7 @@ interface UseShipmentDataReturn {
   refreshShipmentData: () => void;
 }
 
-export function useShipmentData(orderId: string | null, autoRefreshInterval: number = 60000): UseShipmentDataReturn {
+export function useShipmentData(orderId: string | null): UseShipmentDataReturn {
   const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export function useShipmentData(orderId: string | null, autoRefreshInterval: num
     fetchShipmentData();
   }, [fetchShipmentData]);
 
-  // Auto-refresh disabled
+  // Auto-refresh disabled - only manual refresh
   // useEffect(() => {
   //   if (!orderId) return;
 

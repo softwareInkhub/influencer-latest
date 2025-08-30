@@ -8,57 +8,44 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('=== FETCHING SHIPMENT DATA ===');
-    console.log('Order ID:', params.id);
-
-    // Try to fetch order from BRMH, but provide fallback data if it fails
+    // Fetch order from BRMH using getOrder
     let order = null;
     try {
       order = await brmhOrders.getOrder(params.id);
-      console.log('Successfully fetched order from BRMH');
     } catch (brmhError) {
-      console.log('BRMH fetch failed, using fallback data:', brmhError);
-      // Continue with fallback data
+      console.error('❌ BRMH fetch failed:', brmhError);
+      // Return empty shipment data if order not found
+      return NextResponse.json({
+        success: true,
+        shipment: {
+          status: 'Order Not Found',
+          trackingNumber: null,
+          carrier: null,
+          trackingUrl: null,
+          estimatedDelivery: null,
+          deliveryHistory: [],
+          lastUpdated: new Date().toISOString(),
+          orderStatus: 'Unknown'
+        }
+      });
     }
     
-    // Always provide shipment data (either from BRMH or fallback)
+    // Build shipment data from real order data
+    const trackingInfo = order?.trackingInfo || {};
+    const isFulfilled = order?.status === 'InTransit' || order?.status === 'Delivered';
+    
     const shipmentData = {
-      status: order?.trackingInfo?.status || 'Processing',
-      trackingNumber: order?.trackingInfo?.trackingNumber || 'TRK123456789',
-      carrier: order?.trackingInfo?.carrier || 'Delhivery',
-      trackingUrl: order?.trackingInfo?.trackingUrl || 'https://www.delhivery.com/track/package/TRK123456789',
-      estimatedDelivery: order?.trackingInfo?.estimatedDelivery || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      deliveryHistory: order?.trackingInfo?.deliveryHistory || [
-        {
-          status: "Order Confirmed",
-          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Mumbai, India",
-          description: "Order has been confirmed and is being processed"
-        },
-        {
-          status: "Shipped",
-          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Mumbai, India",
-          description: "Package has been shipped via Delhivery"
-        },
-        {
-          status: "In Transit",
-          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          location: "Delhi, India",
-          description: "Package is in transit to destination"
-        },
-        {
-          status: "Out for Delivery",
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          location: "Delhi, India",
-          description: "Package is out for delivery"
-        }
-      ],
-      lastUpdated: order?.trackingInfo?.lastUpdated || order?.updatedAt?.toISOString() || new Date().toISOString(),
+      status: order?.status || 'Created',
+      trackingNumber: isFulfilled ? (trackingInfo.trackingNumber || null) : null,
+      carrier: isFulfilled ? (trackingInfo.carrier || null) : null,
+      trackingUrl: isFulfilled ? (trackingInfo.trackingUrl || null) : null,
+      estimatedDelivery: isFulfilled ? (trackingInfo.estimatedDelivery || null) : null,
+      deliveryHistory: trackingInfo.deliveryHistory || [],
+      lastUpdated: order?.updatedAt?.toISOString() || new Date().toISOString(),
       orderStatus: order?.status || 'Created'
     };
 
-    console.log('Shipment data:', JSON.stringify(shipmentData, null, 2));
+
 
     return NextResponse.json({
       success: true,
@@ -68,46 +55,20 @@ export async function GET(
   } catch (error) {
     console.error('Error in shipment API:', error);
     
-    // Even if everything fails, return fallback data
-    const fallbackData = {
-      status: 'Processing',
-      trackingNumber: 'TRK123456789',
-      carrier: 'Delhivery',
-      trackingUrl: 'https://www.delhivery.com/track/package/TRK123456789',
-      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      deliveryHistory: [
-        {
-          status: "Order Confirmed",
-          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Mumbai, India",
-          description: "Order has been confirmed and is being processed"
-        },
-        {
-          status: "Shipped",
-          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Mumbai, India",
-          description: "Package has been shipped via Delhivery"
-        },
-        {
-          status: "In Transit",
-          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          location: "Delhi, India",
-          description: "Package is in transit to destination"
-        },
-        {
-          status: "Out for Delivery",
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          location: "Delhi, India",
-          description: "Package is out for delivery"
-        }
-      ],
-      lastUpdated: new Date().toISOString(),
-      orderStatus: 'Created'
-    };
-
+    // Return error state
     return NextResponse.json({
-      success: true,
-      shipment: fallbackData
+      success: false,
+      error: 'Failed to fetch shipment data',
+      shipment: {
+        status: 'Error',
+        trackingNumber: null,
+        carrier: null,
+        trackingUrl: null,
+        estimatedDelivery: null,
+        deliveryHistory: [],
+        lastUpdated: new Date().toISOString(),
+        orderStatus: 'Error'
+      }
     });
   }
 }

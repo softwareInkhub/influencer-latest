@@ -47,10 +47,9 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
   const [isDeliveryHistoryExpanded, setIsDeliveryHistoryExpanded] = useState(true);
 
-  // Enhanced shipment data with auto-refresh
+  // Enhanced shipment data with manual refresh only
   const { shipmentData, isLoading: shipmentLoading, error: shipmentError, refreshShipmentData } = useShipmentData(
-    order?.id || null,
-    60000 // 60 seconds auto-refresh
+    order?.id || null
   );
 
   // Remove authentication checks - assume admin access for now
@@ -227,9 +226,31 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
           </Card>
 
           {/* Enhanced Shipment Section - Mobile App Design */}
-          <Card className="border border-gray-200">
-            <CardContent className="p-4">
-              <h4 className="font-semibold text-gray-900 mb-3">Shipment</h4>
+                      <Card className="border border-gray-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900">Shipment</h4>
+                  <div className="flex items-center space-x-2">
+                    {shipmentData?.lastUpdated && (
+                      <span className="text-xs text-gray-500">
+                        Last updated: {new Date(shipmentData.lastUpdated).toLocaleTimeString('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={refreshShipmentData}
+                      disabled={shipmentLoading}
+                      className="w-6 h-6 p-0 hover:bg-gray-100"
+                      title="Refresh shipment data"
+                    >
+                      <RefreshCw className={`w-4 h-4 text-gray-600 ${shipmentLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                </div>
 
               {shipmentLoading ? (
                 <div className="flex items-center justify-center py-4">
@@ -245,77 +266,100 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                     <div className="flex items-center space-x-2">
                       <Truck className="w-4 h-4 text-gray-600" />
                       <span className="text-sm text-gray-900">
-                        {shipmentData?.carrier || 'Carrier'}
+                        {shipmentData?.carrier || '— — —'}
                       </span>
                     </div>
-                                         <Badge className="bg-green-100 text-green-800 border-green-200 text-xs font-medium px-2 py-1 rounded-full">
-                       {(() => {
-                         // Determine current status based on delivery history
-                         if (shipmentData?.deliveryHistory?.length > 0) {
-                           const latestEvent = shipmentData.deliveryHistory[0]; // Most recent event
-                           if (latestEvent.status.includes('Out for Delivery')) return 'Out for Delivery';
-                           if (latestEvent.status.includes('In Transit')) return 'In Transit';
-                           if (latestEvent.status.includes('Shipped')) return 'Shipped';
-                           if (latestEvent.status.includes('Confirmed')) return 'Order Confirmed';
-                         }
-                         return shipmentData?.status || 'Processing';
-                       })()}
-                     </Badge>
+                    <Badge className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      shipmentData?.status === 'Cancelled' ? 'bg-red-100 text-red-800 border-red-200' :
+                      shipmentData?.status === 'Delivered' ? 'bg-green-100 text-green-800 border-green-200' :
+                      shipmentData?.status === 'InTransit' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                      shipmentData?.status === 'Created' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                      'bg-gray-100 text-gray-800 border-gray-200'
+                    }`}>
+                      {shipmentData?.status || 'Processing'}
+                    </Badge>
                   </div>
                   
-                  {/* Tracking Number - Mobile App Style */}
-                  {shipmentData?.trackingNumber && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Package className="w-4 h-4 text-gray-600" />
-                        <span className="text-sm text-gray-900">Tracking ID:</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-sm text-gray-900">{shipmentData.trackingNumber}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(shipmentData.trackingNumber)}
-                          className="w-5 h-5 p-0 hover:bg-gray-100"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                        {shipmentData.trackingUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(shipmentData.trackingUrl, '_blank')}
-                            className="w-5 h-5 p-0 hover:bg-gray-100"
-                            title="Track Package"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                                     {/* Tracking Number - Mobile App Style */}
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <Package className="w-4 h-4 text-gray-600" />
+                       <span className="text-sm text-gray-900">Tracking ID:</span>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       {shipmentData?.trackingNumber ? (
+                         <>
+                           <span className="font-mono text-sm text-gray-900">{shipmentData.trackingNumber}</span>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => copyToClipboard(shipmentData.trackingNumber)}
+                             className="w-5 h-5 p-0 hover:bg-gray-100"
+                             title="Copy tracking number"
+                           >
+                             <Copy className="w-3 h-3" />
+                           </Button>
+                           {shipmentData.trackingUrl && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => window.open(shipmentData.trackingUrl, '_blank', 'noopener,noreferrer')}
+                               className="w-5 h-5 p-0 hover:bg-gray-100"
+                               title="Open live tracking in new tab"
+                             >
+                               <ExternalLink className="w-3 h-3" />
+                             </Button>
+                           )}
+                         </>
+                       ) : (
+                         <span className="text-sm text-gray-500">Order Not Fulfilled</span>
+                       )}
+                     </div>
+                   </div>
+                   
+                   {/* Tracking URL - Show when available */}
+                   {shipmentData?.trackingUrl && (
+                     <div className="flex items-center justify-between">
+                       <div className="flex items-center space-x-2">
+                         <ExternalLink className="w-4 h-4 text-gray-600" />
+                         <span className="text-sm text-gray-900">Live Tracking:</span>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => window.open(shipmentData.trackingUrl, '_blank', 'noopener,noreferrer')}
+                           className="text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded"
+                           title="Open live tracking in new tab"
+                         >
+                           Track Package
+                         </Button>
+                       </div>
+                     </div>
+                   )}
                   
                   {/* ETA - Mobile App Style */}
-                  {shipmentData?.estimatedDelivery && (
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-900">
-                        ETA: {new Date(shipmentData.estimatedDelivery).toLocaleDateString('en-GB', {
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-900">
+                      ETA: {shipmentData?.estimatedDelivery ? 
+                        new Date(shipmentData.estimatedDelivery).toLocaleDateString('en-GB', {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  )}
+                        }) : 
+                        '— — —'
+                      }
+                    </span>
+                  </div>
 
 
 
                                      {/* Delivery History - Mobile App Style */}
-                   {shipmentData?.deliveryHistory && shipmentData.deliveryHistory.length > 0 && (
-                     <div className="mt-6">
-                       <div className="flex items-center justify-between mb-3">
-                         <h5 className="text-sm font-medium text-gray-900">Delivery History</h5>
+                   <div className="mt-6">
+                     <div className="flex items-center justify-between mb-3">
+                       <h5 className="text-sm font-medium text-gray-900">Delivery History</h5>
+                       {shipmentData?.deliveryHistory && shipmentData.deliveryHistory.length > 0 && (
                          <Button
                            variant="ghost"
                            size="sm"
@@ -328,9 +372,11 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                              <ChevronDown className="w-4 h-4 text-gray-600" />
                            )}
                          </Button>
-                       </div>
-                       
-                       {isDeliveryHistoryExpanded && (
+                       )}
+                     </div>
+                     
+                     {shipmentData?.deliveryHistory && shipmentData.deliveryHistory.length > 0 ? (
+                       isDeliveryHistoryExpanded && (
                          <div className="relative">
                            {/* Vertical timeline line - connects to the center of the current event */}
                            {shipmentData.deliveryHistory.length > 1 && (
@@ -359,7 +405,7 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                                      <EventIcon className="w-3 h-3" />
                                    </div>
                                   
-                                                                   {/* Content */}
+                                   {/* Content */}
                                    <div className="flex-1 ml-4">
                                      <div className="font-medium text-gray-900 text-sm">{event.status}</div>
                                      {event.description && (
@@ -382,9 +428,15 @@ export default function OrderDetailDialog({ order, open, onOpenChange }: OrderDe
                             })}
                           </div>
                         </div>
-                       )}
-                     </div>
-                   )}
+                       )
+                     ) : (
+                       <div className="text-center py-4 text-gray-500">
+                         <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                         <p className="text-sm">No delivery history available</p>
+                         <p className="text-xs text-gray-400">Will appear when order is fulfilled</p>
+                       </div>
+                     )}
+                   </div>
                                  </div>
                )}
              </CardContent>
