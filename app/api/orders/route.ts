@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         
         // Update BRMH order with real Shopify order ID
         if (shopifyOrder.id) {
-          await brmhOrders.updateOrder(validated.shopifyOrderId, {
+          await brmhOrders.updateOrder((validated as any).shopifyOrderId, {
             shopifyOrderId: String(shopifyOrder.id)
           } as any);
           console.log('Updated BRMH order with real Shopify order ID:', shopifyOrder.id);
