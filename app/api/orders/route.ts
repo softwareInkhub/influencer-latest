@@ -59,24 +59,24 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Creating order in Shopify...');
         const shopifyOrder = await createOrder({
-          email: validated.shippingDetails?.email,
+          email: (validated as any).shippingDetails?.email,
           shipping_address: {
-            first_name: validated.shippingDetails?.firstName || '',
-            last_name: validated.shippingDetails?.lastName || '',
-            address1: validated.shippingDetails?.address || '',
-            city: validated.shippingDetails?.city || '',
-            province: validated.shippingDetails?.state || '',
-            zip: validated.shippingDetails?.zipCode || '',
-            phone: validated.shippingDetails?.phone || '',
+            first_name: (validated as any).shippingDetails?.firstName || '',
+            last_name: (validated as any).shippingDetails?.lastName || '',
+            address1: (validated as any).shippingDetails?.address || '',
+            city: (validated as any).shippingDetails?.city || '',
+            province: (validated as any).shippingDetails?.state || '',
+            zip: (validated as any).shippingDetails?.zipCode || '',
+            phone: (validated as any).shippingDetails?.phone || '',
             country: 'US' // Default country
           },
-          line_items: validated.products?.map(product => ({
+          line_items: (validated as any).products?.map((product: any) => ({
             variant_id: parseInt(product.id) || 1, // Use product ID as variant ID, fallback to 1
             quantity: product.quantity || 1
           })) || [],
-          tags: ['influencer-order', `influencer-${validated.influencerId}`],
-          note: `Influencer order created via webapp. Order ID: ${validated.shopifyOrderId}`,
-          financial_status: (validated.totalAmount === 0 || validated.totalAmount === null || validated.totalAmount === undefined) ? 'paid' : 'pending',
+          tags: ['influencer-order', `influencer-${(validated as any).influencerId}`],
+          note: `Influencer order created via webapp. Order ID: ${(validated as any).shopifyOrderId}`,
+          financial_status: ((validated as any).totalAmount === 0 || (validated as any).totalAmount === null || (validated as any).totalAmount === undefined) ? 'paid' : 'pending',
           fulfillment_status: 'unfulfilled'
         });
         
