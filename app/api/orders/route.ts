@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
           })) || [],
           tags: ['influencer-order', `influencer-${validated.influencerId}`],
           note: `Influencer order created via webapp. Order ID: ${validated.shopifyOrderId}`,
-          financial_status: validated.totalAmount === 0 ? 'paid' : 'pending',
+          financial_status: (validated.totalAmount === 0 || validated.totalAmount === null || validated.totalAmount === undefined) ? 'paid' : 'pending',
           fulfillment_status: 'unfulfilled'
         });
         

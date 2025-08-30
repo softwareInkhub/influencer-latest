@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
           await brmhOrders.updateOrder(String((found as any).id), { 
             status: newStatus, 
             trackingInfo,
+            products: existingOrder?.products || [], // Preserve products
+            shippingDetails: existingOrder?.shippingDetails, // Preserve shipping details
+            totalAmount: existingOrder?.totalAmount, // Preserve total amount
             updatedAt: new Date() 
           } as any);
         } else {
