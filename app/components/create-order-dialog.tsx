@@ -485,7 +485,8 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
          city: shippingDetails.city,
          province: shippingDetails.state,
          country: 'India',
-         zip: shippingDetails.zipCode
+         zip: shippingDetails.zipCode,
+         phone: shippingDetails.phone
        };
       
                      // Prepare line items with minimal required fields
@@ -516,7 +517,7 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
                 price: isZeroValueOrder ? "0.00" : item.price.toString(),
                 title: item.title
               })),
-              financial_status: "pending",
+              financial_status: isZeroValueOrder ? "paid" : "pending",
               // Add customer information using only form data (no fallbacks)
               customer: {
                 first_name: shippingDetails.firstName,
