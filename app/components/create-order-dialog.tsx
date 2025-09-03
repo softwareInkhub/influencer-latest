@@ -226,18 +226,18 @@ export default function CreateOrderDialog({ open, onOpenChange, selectedInfluenc
     setProductError(null);
     
     // Check cache first (only for new searches, not for pagination) - DISABLED FOR DEBUGGING
-    // if (!page) {
-    //   const cached = getCachedProducts(searchQuery.trim());
-    //   if (cached) {
-    //     setShopProducts(cached.products);
-    //     setTotalCount(cached.totalCount);
-    //     setNextPageInfo(null);
-    //     setPrevPageInfo(null);
-    //     setIsDataFromCache(true);
-    //     setLoadingProducts(false);
-    //     return;
-    //   }
-    // }
+    if (!page) {
+      const cached = getCachedProducts(searchQuery.trim());
+      if (cached) {
+        setShopProducts(cached.products);
+        setTotalCount(cached.totalCount);
+        setNextPageInfo(null);
+        setPrevPageInfo(null);
+        setIsDataFromCache(true);
+        setLoadingProducts(false);
+        return;
+      }
+    }
     setIsDataFromCache(false);
     
     const params = new URLSearchParams();
