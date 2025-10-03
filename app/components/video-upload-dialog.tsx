@@ -101,7 +101,7 @@ export default function VideoUploadDialog({ open, onOpenChange, order }: VideoUp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white text-gray-900">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Upload className="w-5 h-5" />
@@ -137,11 +137,11 @@ export default function VideoUploadDialog({ open, onOpenChange, order }: VideoUp
               <SelectTrigger>
                 <SelectValue placeholder="Select content type" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Video">Video</SelectItem>
-                <SelectItem value="Image">Image</SelectItem>
-                <SelectItem value="Story">Story</SelectItem>
-                <SelectItem value="Reel">Reel</SelectItem>
+              <SelectContent className="bg-white border border-gray-200">
+                <SelectItem value="Video" className="text-gray-900 hover:bg-gray-100">Video</SelectItem>
+                <SelectItem value="Image" className="text-gray-900 hover:bg-gray-100">Image</SelectItem>
+                <SelectItem value="Story" className="text-gray-900 hover:bg-gray-100">Story</SelectItem>
+                <SelectItem value="Reel" className="text-gray-900 hover:bg-gray-100">Reel</SelectItem>
               </SelectContent>
             </Select>
           </div>

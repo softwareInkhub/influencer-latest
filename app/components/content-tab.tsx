@@ -141,7 +141,7 @@ export default function ContentTab() {
       </div>
 
              {/* Filter Bar */}
-       <div className="inline-flex space-x-1">
+       <div className="grid grid-cols-2 md:inline-flex md:space-x-1 gap-1 md:gap-0">
          <button
            className={`px-3 py-1 text-sm font-medium rounded-full transition-all ${
              activeFilter === "all" 
@@ -185,7 +185,7 @@ export default function ContentTab() {
        </div>
 
              {/* Content Status Overview */}
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
          <Card className="bg-white border-0 shadow-md rounded-xl">
            <CardContent className="p-3 text-center">
              <div className="text-2xl font-bold text-gray-900">{uploaded}</div>

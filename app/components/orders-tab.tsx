@@ -49,7 +49,7 @@ export default function OrdersTab() {
       </div>
 
        {/* Order Statistics Cards */}
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
          <Card className="bg-white border-0 shadow-md rounded-xl">
            <CardContent className="p-3 text-center">
              <div className="text-2xl font-bold text-blue-600">{created}</div>

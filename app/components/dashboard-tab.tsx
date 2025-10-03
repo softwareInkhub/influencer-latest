@@ -34,7 +34,7 @@ export default function DashboardTab({ onTabChange }: DashboardTabProps) {
       </div>
 
       {/* Key Performance Indicators */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Influencers */}
         <Card 
           className="bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl"
